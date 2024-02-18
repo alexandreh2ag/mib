@@ -1,0 +1,5 @@
+build:
+    extensionExclude: ".md,.txt"
+template:
+    imagePath: "my-custom-image.tmpl"
+    indexPath: "my-custom-index.tmpl"
