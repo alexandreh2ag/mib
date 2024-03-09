@@ -22,8 +22,6 @@ func GetCommitCmd(ctx *context.Context) *cobra.Command {
 
 func GetCommitRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		panic(errors.New("implement me"))
-
-		return nil
+		return errors.New("implement me")
 	}
 }

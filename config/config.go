@@ -1,17 +1,16 @@
 package config
 
 type Config struct {
-	Build struct {
-		ExtensionExclude string `mapstructure:"extensionExclude"`
-	} `mapstructure:"build"`
-	Template struct {
-		ImagePath string `mapstructure:"imagePath"`
-		IndexPath string `mapstructure:"indexPath"`
-	} `mapstructure:"template"`
+	Build    Build    `mapstructure:"build"`
+	Template Template `mapstructure:"template"`
+}
+type Build struct {
+	ExtensionExclude string `mapstructure:"extensionExclude"`
 }
 
-func (c Config) Get() Config {
-	return c
+type Template struct {
+	ImagePath string `mapstructure:"imagePath"`
+	IndexPath string `mapstructure:"indexPath"`
 }
 
 func NewConfig() Config {

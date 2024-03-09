@@ -1,6 +1,7 @@
 package context
 
 import (
+	"io"
 	"log/slog"
 	"os"
 	"testing"
@@ -44,5 +45,24 @@ func TestDefaultContext(t *testing.T) {
 		LogLevel:   level,
 	}
 	got := DefaultContext()
+	assert.Equal(t, want, got)
+}
+
+func TestTestContext(t *testing.T) {
+
+	cfg := config.DefaultConfig()
+	level := &slog.LevelVar{}
+	level.Set(slog.LevelInfo)
+	opts := &slog.HandlerOptions{AddSource: false, Level: level}
+	logger := slog.New(slog.NewTextHandler(io.Discard, opts))
+	fs := afero.NewMemMapFs()
+	want := &Context{
+		Config:     &cfg,
+		Logger:     logger,
+		LogLevel:   level,
+		FS:         fs,
+		WorkingDir: "/app",
+	}
+	got := TestContext(nil)
 	assert.Equal(t, want, got)
 }

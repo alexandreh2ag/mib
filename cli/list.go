@@ -1,8 +1,9 @@
 package cli
 
 import (
-	"errors"
 	"github.com/alexandreh2ag/mib/context"
+	"github.com/alexandreh2ag/mib/loader"
+	"github.com/alexandreh2ag/mib/printer"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +17,12 @@ func GetListCmd(ctx *context.Context) *cobra.Command {
 
 func GetListRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		panic(errors.New("implement me"))
+		images := loader.LoadImages(ctx)
+		if len(images) > 0 {
+			cmd.Println(printer.DisplayImagesTree(images))
+		} else {
+			cmd.Println("No images loaded")
+		}
 
 		return nil
 	}

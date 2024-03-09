@@ -3,6 +3,7 @@ package context
 import (
 	"github.com/alexandreh2ag/mib/config"
 	"github.com/spf13/afero"
+	"io"
 	"log/slog"
 	"os"
 )
@@ -29,4 +30,22 @@ func DefaultContext() *Context {
 	}
 	cfg := config.DefaultConfig()
 	return NewContext(&cfg, workingDir, slog.New(slog.NewTextHandler(os.Stdout, opts)), level, afero.NewOsFs())
+}
+
+func TestContext(logBuffer io.Writer) *Context {
+	if logBuffer == nil {
+		logBuffer = io.Discard
+	}
+	cfg := config.DefaultConfig()
+	level := &slog.LevelVar{}
+	level.Set(slog.LevelInfo)
+	opts := &slog.HandlerOptions{AddSource: false, Level: level}
+
+	return &Context{
+		Logger:     slog.New(slog.NewTextHandler(logBuffer, opts)),
+		LogLevel:   level,
+		Config:     &cfg,
+		FS:         afero.NewMemMapFs(),
+		WorkingDir: "/app",
+	}
 }

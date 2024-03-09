@@ -3,11 +3,9 @@ package cli
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"path"
 	"path/filepath"
 
-	"github.com/labstack/gommon/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -28,26 +26,33 @@ func GetRootCmd(ctx *context.Context) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringP(Config, "c", "", "Define config path")
-	cmd.PersistentFlags().StringP(WorkingDir, "w", "", "Define working dir")
+	cmd.PersistentFlags().StringP(WorkingDir, "w", ctx.WorkingDir, "Define working dir")
 	cmd.PersistentFlags().StringP(LogLevel, "l", "INFO", "Define log level")
 	_ = viper.BindPFlag(Config, cmd.Flags().Lookup(Config))
 	_ = viper.BindPFlag(WorkingDir, cmd.Flags().Lookup(WorkingDir))
 	_ = viper.BindPFlag(LogLevel, cmd.Flags().Lookup(LogLevel))
 	viper.SetDefault(LogLevel, "info")
 	viper.RegisterAlias("log_level", LogLevel)
-
+	cmd.AddCommand(
+		GetBuildCmd(ctx),
+		GetGenerateCmd(ctx),
+		GetListCmd(ctx),
+		GetCommitCmd(ctx),
+		GetVersionCmd(),
+	)
 	return cmd
 }
 
 func GetRootPreRunEFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		if cmd.Flags().Lookup(WorkingDir).Value.String() != "" {
+		workingDirFlag, err := cmd.Flags().GetString(WorkingDir)
+		if err == nil && workingDirFlag != "" {
 			workingDir, _ := cmd.Flags().GetString(WorkingDir)
 			ctx.WorkingDir, _ = filepath.Abs(workingDir)
 		}
 		initConfig(ctx, cmd)
 		logLevelFlagStr, _ := cmd.Flags().GetString(LogLevel)
-		if logLevelFlagStr != "" {
+		if logLevelFlagStr != "" && cmd.Flags().Changed(LogLevel) {
 			level := slog.LevelInfo
 			err := level.UnmarshalText([]byte(logLevelFlagStr))
 			if err != nil {
@@ -63,17 +68,16 @@ func GetRootPreRunEFn(ctx *context.Context) func(*cobra.Command, []string) error
 }
 
 func initConfig(ctx *context.Context, cmd *cobra.Command) {
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		log.Fatal(err)
-	}
+	dir := ctx.WorkingDir
 
 	viper.AddConfigPath(dir)
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("MIB")
+	viper.SetConfigName(Config)
+	viper.SetConfigType("yaml")
 
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
 
 	configPath := viper.GetString(Config)
@@ -84,18 +88,17 @@ func initConfig(ctx *context.Context, cmd *cobra.Command) {
 		if configDir != "." && configDir != dir {
 			viper.AddConfigPath(configDir)
 		}
-
-		// If a config file is found, read it in.
-		if err := viper.ReadInConfig(); err == nil {
-			fmt.Println("Using config file:", viper.ConfigFileUsed())
-		} else {
-			fmt.Println(err)
-		}
 	}
 
-	err = viper.Unmarshal(ctx.Config)
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		fmt.Println(err)
+	}
+
+	err := viper.Unmarshal(ctx.Config)
 	if err != nil {
-		fmt.Printf("unable to decode into config struct, %v", err)
+		panic(fmt.Errorf("unable to decode into config struct, %v", err))
 	}
 
 }
