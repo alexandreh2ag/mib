@@ -4,6 +4,11 @@ type Config struct {
 	Build    Build    `mapstructure:"build"`
 	Template Template `mapstructure:"template"`
 }
+
+func (g *Config) Get() *Config {
+	return g
+}
+
 type Build struct {
 	ExtensionExclude string `mapstructure:"extensionExclude"`
 }

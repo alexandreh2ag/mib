@@ -134,6 +134,22 @@ func TestGetRootPreRunEFn_SuccessWithLogLevelFlag(t *testing.T) {
 	assert.Equal(t, "LevelVar(ERROR)", ctx.LogLevel.String())
 }
 
+func TestGetRootPreRunEFn_FailedWhenOverrideTmpl(t *testing.T) {
+	ctx := context.TestContext(nil)
+	cmd := GetRootCmd(ctx)
+	fsFake := afero.NewMemMapFs()
+	viper.Reset()
+	viper.SetFs(fsFake)
+	path := "/app"
+	_ = fsFake.Mkdir(path, 0775)
+	_ = afero.WriteFile(fsFake, fmt.Sprintf("%s/config.yml", path), []byte("template: {indexPath: 'wrong'}"), 0644)
+	_ = cmd.Execute()
+
+	err := GetRootPreRunEFn(ctx)(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "open /app/wrong: file does not exist")
+}
+
 func TestGetRootPreRunEFn_FailedWithLogLevelFlag(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)

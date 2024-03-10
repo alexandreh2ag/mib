@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/alexandreh2ag/mib/template"
 	"log/slog"
 	"path"
 	"path/filepath"
@@ -51,6 +52,10 @@ func GetRootPreRunEFn(ctx *context.Context) func(*cobra.Command, []string) error
 			ctx.WorkingDir, _ = filepath.Abs(workingDir)
 		}
 		initConfig(ctx, cmd)
+		err = template.OverrideTemplatesFromConfig(ctx)
+		if err != nil {
+			return err
+		}
 		logLevelFlagStr, _ := cmd.Flags().GetString(LogLevel)
 		if logLevelFlagStr != "" && cmd.Flags().Changed(LogLevel) {
 			level := slog.LevelInfo

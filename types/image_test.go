@@ -186,3 +186,13 @@ func TestImage_GetTags(t *testing.T) {
 		})
 	}
 }
+
+func TestImageName_GetName(t *testing.T) {
+	im := ImageName{Name: "foo"}
+	assert.Equal(t, "foo", im.GetName())
+}
+
+func TestImageName_GetTag(t *testing.T) {
+	im := ImageName{Tag: "0.1"}
+	assert.Equal(t, "0.1", im.GetTag())
+}

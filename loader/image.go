@@ -10,9 +10,11 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"strings"
 )
 
-var DataFilename = "dbp.yml"
+var DataFilename = "mib.yml"
 
 func LoadImages(ctx *context.Context) types.Images {
 	images := types.Images{}
@@ -28,7 +30,7 @@ func LoadImages(ctx *context.Context) types.Images {
 		}
 
 		if DataFilename == fi.Name() {
-			ctx.Logger.Debug(fmt.Sprintf("Try to load dbp file : %s", path.Dir(fp)))
+			ctx.Logger.Debug(fmt.Sprintf("Try to load mib file : %s", path.Dir(fp)))
 			image, loadErr := LoadImage(ctx, fp)
 			if loadErr != nil {
 				ctx.Logger.Error(fmt.Sprintf("Error occured : %s.", loadErr))
@@ -113,4 +115,15 @@ func findParentImage(ctx *context.Context, image *types.Image) error {
 	image.Parent = &parentImage
 
 	return nil
+}
+
+func RemoveExtExcludePath(workingDir string, extensionExclude string, filesUpdated []string) []string {
+	pathsChanged := []string{}
+	for _, file := range filesUpdated {
+		if extensionExclude == "" || !slices.Contains(strings.Split(extensionExclude, ","), filepath.Ext(file)) {
+			fileChangedAbsolute, _ := filepath.Abs(filepath.Join(workingDir, file))
+			pathsChanged = append(pathsChanged, fileChangedAbsolute)
+		}
+	}
+	return pathsChanged
 }

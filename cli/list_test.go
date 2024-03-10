@@ -29,11 +29,11 @@ func TestGetListRunFn_Success_WithImages(t *testing.T) {
 	viper.SetFs(fsFake)
 	path := "/app"
 	_ = fsFake.Mkdir(path, 0775)
-	_ = afero.WriteFile(ctx.FS, "/app/foo/dbp.yml", []byte("name: foo\ntag: 0.1"), 0644)
+	_ = afero.WriteFile(ctx.FS, "/app/foo/mib.yml", []byte("name: foo\ntag: 0.1"), 0644)
 	_ = afero.WriteFile(ctx.FS, "/app/foo/Dockerfile", []byte("FROM debian:latest"), 0644)
-	_ = afero.WriteFile(ctx.FS, "/app/bar/dbp.yml", []byte("name: bar\ntag: 0.1"), 0644)
+	_ = afero.WriteFile(ctx.FS, "/app/bar/mib.yml", []byte("name: bar\ntag: 0.1"), 0644)
 	_ = afero.WriteFile(ctx.FS, "/app/bar/Dockerfile", []byte("FROM debian:latest"), 0644)
-	_ = afero.WriteFile(ctx.FS, "/app/foo-bar/dbp.yml", []byte("name: foo-bar\ntag: 0.1"), 0644)
+	_ = afero.WriteFile(ctx.FS, "/app/foo-bar/mib.yml", []byte("name: foo-bar\ntag: 0.1"), 0644)
 	_ = afero.WriteFile(ctx.FS, "/app/foo-bar/Dockerfile", []byte("FROM foo:0.1"), 0644)
 
 	err := GetListRunFn(ctx)(cmd, []string{})

@@ -1,8 +1,10 @@
 package generate
 
 import (
-	"errors"
 	"github.com/alexandreh2ag/mib/context"
+	"github.com/alexandreh2ag/mib/git"
+	"github.com/alexandreh2ag/mib/loader"
+	"github.com/alexandreh2ag/mib/template"
 
 	"github.com/spf13/cobra"
 )
@@ -17,6 +19,12 @@ func GetDirtyCmd(ctx *context.Context) *cobra.Command {
 
 func GetDirtyRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		return errors.New("implement me")
+		images := loader.LoadImages(ctx)
+		filesChanged, err := git.GetStageFilesChanged(ctx)
+		if err != nil {
+			return err
+		}
+		images.FlagChanged(loader.RemoveExtExcludePath(ctx.WorkingDir, ctx.Config.Build.ExtensionExclude, filesChanged))
+		return template.GenerateReadmeImages(ctx, images.GetImagesToBuild())
 	}
 }

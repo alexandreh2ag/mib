@@ -9,6 +9,14 @@ func (imn ImageName) GetFullName() string {
 	return imn.Name + ":" + imn.Tag
 }
 
+func (imn ImageName) GetName() string {
+	return imn.Name
+}
+
+func (imn ImageName) GetTag() string {
+	return imn.Tag
+}
+
 type Image struct {
 	ImageName        `yaml:",inline"`
 	Alias            []ImageName `yaml:"alias"`

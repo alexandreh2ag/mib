@@ -22,34 +22,34 @@ func TestLoadImage(t *testing.T) {
 	}{
 		{
 			name: "CheckOk",
-			args: args{ctx: context.TestContext(nil), path: "/app/test/dbp.yml"},
+			args: args{ctx: context.TestContext(nil), path: "/app/test/mib.yml"},
 			preRun: func(ctx *context.Context) {
-				afero.WriteFile(ctx.FS, "/app/test/dbp.yml", []byte("name: test\ntag: 0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: test\ntag: 0.1"), 0644)
 				afero.WriteFile(ctx.FS, "/app/test/Dockerfile", []byte("FROM debian:latest"), 0644)
 			},
 			want: types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}},
 		},
 		{
 			name:    "CheckFailedWhenDBPFileNotExist",
-			args:    args{ctx: context.TestContext(nil), path: "/app/test/dbp.yml"},
+			args:    args{ctx: context.TestContext(nil), path: "/app/test/mib.yml"},
 			preRun:  func(ctx *context.Context) {},
 			want:    types.Image{Path: "/app/test", RelativeDir: "test"},
 			wantErr: true,
 		},
 		{
 			name: "CheckFailedWhenDBPFileBadFormat",
-			args: args{ctx: context.TestContext(nil), path: "/app/test/dbp.yml"},
+			args: args{ctx: context.TestContext(nil), path: "/app/test/mib.yml"},
 			preRun: func(ctx *context.Context) {
-				afero.WriteFile(ctx.FS, "/app/test/dbp.yml", []byte("name: {test"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: {test"), 0644)
 			},
 			want:    types.Image{Path: "/app/test", RelativeDir: "test"},
 			wantErr: true,
 		},
 		{
 			name: "CheckFailedWhenDockerfileNotExist",
-			args: args{ctx: context.TestContext(nil), path: "/app/test/dbp.yml"},
+			args: args{ctx: context.TestContext(nil), path: "/app/test/mib.yml"},
 			preRun: func(ctx *context.Context) {
-				afero.WriteFile(ctx.FS, "/app/test/dbp.yml", []byte("name: test\ntag: 0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: test\ntag: 0.1"), 0644)
 			},
 			want:    types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test"},
 			wantErr: true,
@@ -149,7 +149,7 @@ func TestLoadImages(t *testing.T) {
 			name: "CheckOKWithOneImage",
 			args: args{ctx: context.TestContext(nil)},
 			preRun: func(ctx *context.Context) {
-				afero.WriteFile(ctx.FS, "/app/test/dbp.yml", []byte("name: test\ntag: 0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: test\ntag: 0.1"), 0644)
 				afero.WriteFile(ctx.FS, "/app/test/Dockerfile", []byte("FROM debian:latest"), 0644)
 			},
 			want: types.Images{
@@ -160,9 +160,9 @@ func TestLoadImages(t *testing.T) {
 			name: "CheckOKWithTwoImage",
 			args: args{ctx: context.TestContext(nil)},
 			preRun: func(ctx *context.Context) {
-				afero.WriteFile(ctx.FS, "/app/test/dbp.yml", []byte("name: test\ntag: 0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: test\ntag: 0.1"), 0644)
 				afero.WriteFile(ctx.FS, "/app/test/Dockerfile", []byte("FROM debian:latest"), 0644)
-				afero.WriteFile(ctx.FS, "/app/foo/dbp.yml", []byte("name: foo\ntag: 0.3"), 0644)
+				afero.WriteFile(ctx.FS, "/app/foo/mib.yml", []byte("name: foo\ntag: 0.3"), 0644)
 				afero.WriteFile(ctx.FS, "/app/foo/Dockerfile", []byte("FROM debian:dev"), 0644)
 			},
 			want: types.Images{
@@ -174,8 +174,8 @@ func TestLoadImages(t *testing.T) {
 			name: "CheckOkWithOneImageFail",
 			args: args{ctx: context.TestContext(nil)},
 			preRun: func(ctx *context.Context) {
-				afero.WriteFile(ctx.FS, "/app/test/dbp.yml", []byte("name: test\ntag: 0.1"), 0644)
-				afero.WriteFile(ctx.FS, "/app/foo/dbp.yml", []byte("name: foo\ntag: 0.3"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: test\ntag: 0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/foo/mib.yml", []byte("name: foo\ntag: 0.3"), 0644)
 				afero.WriteFile(ctx.FS, "/app/foo/Dockerfile", []byte("FROM debian:dev"), 0644)
 			},
 			want: types.Images{
@@ -263,6 +263,54 @@ func Test_orderDependencyImages(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := orderDependencyImages(tt.imagesToSort); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("orderDependencyImages() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRemoveExtExcludePath(t *testing.T) {
+	type args struct {
+		workingDir       string
+		extensionExclude string
+		filesUpdated     []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "SuccessNothing",
+			args: args{
+				workingDir:       "/app",
+				extensionExclude: "",
+				filesUpdated:     []string{},
+			},
+			want: []string{},
+		},
+		{
+			name: "SuccessWithoutExclude",
+			args: args{
+				workingDir:       "/app",
+				extensionExclude: "",
+				filesUpdated:     []string{"foo/Dockerfile", "bar/Dockerfile"},
+			},
+			want: []string{"/app/foo/Dockerfile", "/app/bar/Dockerfile"},
+		},
+		{
+			name: "SuccessWithExclude",
+			args: args{
+				workingDir:       "/app",
+				extensionExclude: ".md,.txt",
+				filesUpdated:     []string{"foo/file.md", "foo/file.txt", "bar/Dockerfile"},
+			},
+			want: []string{"/app/bar/Dockerfile"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RemoveExtExcludePath(tt.args.workingDir, tt.args.extensionExclude, tt.args.filesUpdated); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RemoveExtExcludePath() = %v, want %v", got, tt.want)
 			}
 		})
 	}

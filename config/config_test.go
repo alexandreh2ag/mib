@@ -20,3 +20,8 @@ func TestDefaultConfig(t *testing.T) {
 	}
 	assert.Equal(t, want, got)
 }
+
+func TestConfig_Get(t *testing.T) {
+	cfg := DefaultConfig()
+	assert.Equal(t, &cfg, cfg.Get())
+}
