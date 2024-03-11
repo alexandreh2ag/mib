@@ -24,13 +24,13 @@ func TestGetCommitRunFn_Success(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	worktree := mockgit.NewMockWorktree(ctrl)
-	worktree.EXPECT().Status().Times(1).Return(
+	m := mockgit.NewMockManager(ctrl)
+	m.EXPECT().Status().Times(1).Return(
 		git.Status{},
 		nil,
 	)
-	mibGit.GetWorktree = func(ctx *context.Context) (mibGit.Worktree, error) {
-		return worktree, nil
+	mibGit.CreateGit = func(ctx *context.Context) (mibGit.Manager, error) {
+		return m, nil
 	}
 
 	err := GetDirtyRunFn(ctx)(cmd, []string{})
@@ -45,7 +45,7 @@ func TestGetCommitRunFn_ErrorWorkTree(t *testing.T) {
 	viper.SetFs(fsFake)
 	path := "/app"
 	_ = fsFake.Mkdir(path, 0775)
-	mibGit.GetWorktree = func(ctx *context.Context) (mibGit.Worktree, error) {
+	mibGit.CreateGit = func(ctx *context.Context) (mibGit.Manager, error) {
 		return nil, errors.New("error")
 	}
 	err := GetDirtyRunFn(ctx)(cmd, []string{})

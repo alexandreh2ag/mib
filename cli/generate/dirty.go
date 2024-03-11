@@ -19,11 +19,12 @@ func GetDirtyCmd(ctx *context.Context) *cobra.Command {
 
 func GetDirtyRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		images := loader.LoadImages(ctx)
-		filesChanged, err := git.GetStageFilesChanged(ctx)
-		if err != nil {
-			return err
+		gitManager, errGit := git.CreateGit(ctx)
+		if errGit != nil {
+			return errGit
 		}
+		images := loader.LoadImages(ctx)
+		filesChanged := git.GetStageFilesChanged(gitManager)
 		images.FlagChanged(loader.RemoveExtExcludePath(ctx.WorkingDir, ctx.Config.Build.ExtensionExclude, filesChanged))
 		return template.GenerateReadmeImages(ctx, images.GetImagesToBuild())
 	}

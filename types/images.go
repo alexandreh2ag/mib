@@ -50,3 +50,14 @@ func (ims Images) FlagChanged(pathToBuild []string) {
 		}
 	}
 }
+
+func (ims Images) GetAllNames(includeChildren bool) []string {
+	names := []string{}
+	for _, im := range ims {
+		names = append(names, im.GetFullName())
+		if includeChildren {
+			names = append(names, im.Children.GetAllNames(includeChildren)...)
+		}
+	}
+	return names
+}

@@ -222,3 +222,26 @@ func TestImages_GetAll_SuccessWithout(t *testing.T) {
 	want := Images{image1, imageChild1, imageChild2, &Image{ImageName: ImageName{Name: "foo", Tag: "0.1"}}}
 	assert.Equal(t, want, images.GetAll())
 }
+
+func TestImages_GetAllNames_SuccessEmpty(t *testing.T) {
+	images := Images{}
+	assert.Equal(t, []string{}, images.GetAllNames(false))
+}
+
+func TestImages_GetAllNames_SuccessWithoutIncludeChildren(t *testing.T) {
+	images := Images{
+		&Image{ImageName: ImageName{Name: "foo", Tag: "0.1"}, Children: Images{&Image{ImageName: ImageName{Name: "foo-child", Tag: "0.1"}}}},
+		&Image{ImageName: ImageName{Name: "bar", Tag: "0.1"}},
+	}
+	want := []string{"foo:0.1", "bar:0.1"}
+	assert.Equal(t, want, images.GetAllNames(false))
+}
+
+func TestImages_GetAllNames_SuccessWithIncludeChildren(t *testing.T) {
+	images := Images{
+		&Image{ImageName: ImageName{Name: "foo", Tag: "0.1"}, Children: Images{&Image{ImageName: ImageName{Name: "foo-child", Tag: "0.1"}}}},
+		&Image{ImageName: ImageName{Name: "bar", Tag: "0.1"}},
+	}
+	want := []string{"foo:0.1", "foo-child:0.1", "bar:0.1"}
+	assert.Equal(t, want, images.GetAllNames(true))
+}
