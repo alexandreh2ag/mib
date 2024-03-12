@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+	"io"
 	"testing"
 )
 
@@ -27,6 +28,7 @@ func initFS(fs afero.Fs) {
 func TestGetCommitRunFn_Success(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -76,6 +78,7 @@ func TestGetCommitRunFn_Success(t *testing.T) {
 func TestGetCommitRunFn_ErrorGetRepository(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 
@@ -91,6 +94,7 @@ func TestGetCommitRunFn_ErrorGetRepository(t *testing.T) {
 func TestGetCommitRunFn_ErrorGetImagesAdded(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -123,6 +127,7 @@ func TestGetCommitRunFn_ErrorGetImagesAdded(t *testing.T) {
 func TestGetCommitRunFn_ErrorGetImagesRemoved(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -156,6 +161,7 @@ func TestGetCommitRunFn_ErrorGetImagesRemoved(t *testing.T) {
 func TestGetCommitRunFn_ErrorAddToStage(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -189,6 +195,7 @@ func TestGetCommitRunFn_ErrorAddToStage(t *testing.T) {
 func TestGetCommitRunFn_ErrorGenerateIndex(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -221,6 +228,7 @@ func TestGetCommitRunFn_ErrorGenerateIndex(t *testing.T) {
 func TestGetCommitRunFn_ErrorGenerateImage(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -253,6 +261,7 @@ func TestGetCommitRunFn_ErrorGenerateImage(t *testing.T) {
 func TestGetCommitRunFn_ErrorGenerateCommitMessage(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -277,6 +286,7 @@ func TestGetCommitRunFn_ErrorGenerateCommitMessage(t *testing.T) {
 func TestGetCommitRunFn_ErrorCreateCommit(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir

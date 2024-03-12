@@ -5,12 +5,14 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"testing"
 )
 
 func TestGetCommitRunFn_Success(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)

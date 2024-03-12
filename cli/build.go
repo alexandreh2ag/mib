@@ -11,7 +11,7 @@ func GetBuildCmd(ctx *context.Context) *cobra.Command {
 		Use:   "build",
 		Short: "build sub commands",
 	}
-	cmd.PersistentFlags().Bool(build.PushImages, true, "Push image to registry")
+	cmd.PersistentFlags().Bool(build.PushImages, false, "Push image to registry")
 	cmd.PersistentFlags().BoolP(build.DryRun, "d", false, "Dry run")
 
 	cmd.AddCommand(build.GetDirtyCmd(ctx))

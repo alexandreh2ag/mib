@@ -5,12 +5,14 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"testing"
 )
 
 func TestGetListRunFn_Success_NoImage(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetListCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)
@@ -24,6 +26,7 @@ func TestGetListRunFn_Success_NoImage(t *testing.T) {
 func TestGetListRunFn_Success_WithImages(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetListCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)

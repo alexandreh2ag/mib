@@ -2,6 +2,7 @@ package context
 
 import (
 	"github.com/alexandreh2ag/mib/config"
+	typesContainers "github.com/alexandreh2ag/mib/types/container"
 	"github.com/spf13/afero"
 	"io"
 	"log/slog"
@@ -14,10 +15,11 @@ type Context struct {
 	Logger     *slog.Logger
 	LogLevel   *slog.LevelVar
 	FS         afero.Fs
+	Builders   typesContainers.Builders
 }
 
 func NewContext(config *config.Config, workingDir string, logger *slog.Logger, logLevel *slog.LevelVar, FSProvider afero.Fs) *Context {
-	return &Context{Config: config, WorkingDir: workingDir, Logger: logger, LogLevel: logLevel, FS: FSProvider}
+	return &Context{Config: config, WorkingDir: workingDir, Logger: logger, LogLevel: logLevel, FS: FSProvider, Builders: typesContainers.Builders{}}
 }
 
 func DefaultContext() *Context {
@@ -47,5 +49,6 @@ func TestContext(logBuffer io.Writer) *Context {
 		Config:     &cfg,
 		FS:         afero.NewMemMapFs(),
 		WorkingDir: "/app",
+		Builders:   typesContainers.Builders{},
 	}
 }

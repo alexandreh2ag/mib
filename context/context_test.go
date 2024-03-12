@@ -1,6 +1,7 @@
 package context
 
 import (
+	typesContainers "github.com/alexandreh2ag/mib/types/container"
 	"io"
 	"log/slog"
 	"os"
@@ -24,6 +25,7 @@ func TestNewContext(t *testing.T) {
 		Logger:     logger,
 		LogLevel:   level,
 		FS:         fs,
+		Builders:   typesContainers.Builders{},
 	}
 	got := NewContext(cfg, "/app", logger, level, fs)
 
@@ -43,6 +45,7 @@ func TestDefaultContext(t *testing.T) {
 		FS:         afero.NewOsFs(),
 		Logger:     logger,
 		LogLevel:   level,
+		Builders:   typesContainers.Builders{},
 	}
 	got := DefaultContext()
 	assert.Equal(t, want, got)
@@ -62,6 +65,7 @@ func TestTestContext(t *testing.T) {
 		LogLevel:   level,
 		FS:         fs,
 		WorkingDir: "/app",
+		Builders:   typesContainers.Builders{},
 	}
 	got := TestContext(nil)
 	assert.Equal(t, want, got)

@@ -1,18 +1,25 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"github.com/alexandreh2ag/mib/config"
+	"github.com/alexandreh2ag/mib/container"
+	"github.com/alexandreh2ag/mib/container/docker"
 	"github.com/alexandreh2ag/mib/context"
+	typesContainers "github.com/alexandreh2ag/mib/types/container"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"io"
+	"os"
 	"testing"
 )
 
 func Test_initConfig_SuccessConfigEmpty(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)
@@ -27,6 +34,7 @@ func Test_initConfig_SuccessConfigEmpty(t *testing.T) {
 func Test_initConfig_SuccessOverrideDefaultConfig(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)
@@ -49,6 +57,7 @@ func Test_initConfig_SuccessOverrideDefaultConfig(t *testing.T) {
 func Test_initConfig_SuccessWithConfigFlag(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)
@@ -68,6 +77,7 @@ func Test_initConfig_SuccessWithConfigFlag(t *testing.T) {
 func Test_initConfig_FailWithUnmarshallError(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)
@@ -88,9 +98,11 @@ func Test_initConfig_FailWithUnmarshallError(t *testing.T) {
 func TestGetRootPreRunEFn_Success(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
-	fsFake := afero.NewMemMapFs()
+	cmd.SetOut(io.Discard)
+	_ = os.Setenv("HOME", ctx.WorkingDir)
+	_ = afero.WriteFile(ctx.FS, fmt.Sprintf("%s/.docker/config.json", ctx.WorkingDir), []byte("{}"), 0644)
 	viper.Reset()
-	viper.SetFs(fsFake)
+	viper.SetFs(ctx.FS)
 	err := GetRootPreRunEFn(ctx)(cmd, []string{})
 	assert.NoError(t, err)
 	assert.Equal(t, "LevelVar(INFO)", ctx.LogLevel.String())
@@ -99,7 +111,10 @@ func TestGetRootPreRunEFn_Success(t *testing.T) {
 func TestGetRootPreRunEFn_SuccessWithWorkingDirFlag(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
-	fsFake := afero.NewMemMapFs()
+	cmd.SetOut(io.Discard)
+	_ = os.Setenv("HOME", ctx.WorkingDir)
+	_ = afero.WriteFile(ctx.FS, fmt.Sprintf("%s/.docker/config.json", ctx.WorkingDir), []byte("{}"), 0644)
+	fsFake := ctx.FS
 	viper.Reset()
 	viper.SetFs(fsFake)
 	path := "/foo"
@@ -118,12 +133,15 @@ func TestGetRootPreRunEFn_SuccessWithWorkingDirFlag(t *testing.T) {
 func TestGetRootPreRunEFn_SuccessWithLogLevelFlag(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
-	fsFake := afero.NewMemMapFs()
+	cmd.SetOut(io.Discard)
+	fsFake := ctx.FS
 	viper.Reset()
 	viper.SetFs(fsFake)
 	path := "/app"
 	_ = fsFake.Mkdir(path, 0775)
 	_ = afero.WriteFile(fsFake, fmt.Sprintf("%s/config.yml", path), []byte("build: {}"), 0644)
+	_ = os.Setenv("HOME", ctx.WorkingDir)
+	_ = afero.WriteFile(ctx.FS, fmt.Sprintf("%s/.docker/config.json", ctx.WorkingDir), []byte("{}"), 0644)
 	cmd.SetArgs([]string{
 		"--" + LogLevel, "ERROR"},
 	)
@@ -137,6 +155,7 @@ func TestGetRootPreRunEFn_SuccessWithLogLevelFlag(t *testing.T) {
 func TestGetRootPreRunEFn_FailedWhenOverrideTmpl(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)
@@ -153,6 +172,7 @@ func TestGetRootPreRunEFn_FailedWhenOverrideTmpl(t *testing.T) {
 func TestGetRootPreRunEFn_FailedWithLogLevelFlag(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetRootCmd(ctx)
+	cmd.SetOut(io.Discard)
 	fsFake := afero.NewMemMapFs()
 	viper.Reset()
 	viper.SetFs(fsFake)
@@ -167,4 +187,25 @@ func TestGetRootPreRunEFn_FailedWithLogLevelFlag(t *testing.T) {
 	err := GetRootPreRunEFn(ctx)(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "slog: level string \"WRONG\": unknown name")
+}
+
+func TestGetRootPreRunEFn_FailedCreateBuilders(t *testing.T) {
+	ctx := context.TestContext(nil)
+	cmd := GetRootCmd(ctx)
+	cmd.SetOut(io.Discard)
+	fsFake := afero.NewMemMapFs()
+	viper.Reset()
+	viper.SetFs(fsFake)
+	path := "/app"
+	_ = fsFake.Mkdir(path, 0775)
+	_ = afero.WriteFile(fsFake, fmt.Sprintf("%s/config.yml", path), []byte("build: {}"), 0644)
+	container.BuilderFnFactory[docker.KeyBuilder] = func(ctx *context.Context) (typesContainers.BuilderImage, error) {
+		return nil, errors.New("error")
+	}
+	cmd.SetArgs([]string{})
+	_ = cmd.Execute()
+
+	err := GetRootPreRunEFn(ctx)(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "fail to create builder docker with error: error")
 }

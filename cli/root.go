@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/alexandreh2ag/mib/container"
 	"github.com/alexandreh2ag/mib/template"
 	"log/slog"
 	"path"
@@ -67,6 +68,14 @@ func GetRootPreRunEFn(ctx *context.Context) func(*cobra.Command, []string) error
 		}
 		ctx.Logger.Info(fmt.Sprintf("Log level %s", ctx.LogLevel.String()))
 		ctx.Logger.Info(fmt.Sprintf("Use working dir %s", ctx.WorkingDir))
+
+		for key, fn := range container.BuilderFnFactory {
+			builder, errCreateBuilder := fn(ctx)
+			if errCreateBuilder != nil {
+				return fmt.Errorf("fail to create builder %s with error: %v", key, errCreateBuilder)
+			}
+			ctx.Builders[key] = builder
+		}
 
 		return nil
 	}
