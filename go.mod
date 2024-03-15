@@ -18,6 +18,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
+	github.com/Maldris/go-billy-afero v0.0.0-20200815120323-e9d3de59c99a // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.12.0 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect

@@ -29,6 +29,7 @@ func TestGetCommitRunFn_Success(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -79,6 +80,7 @@ func TestGetCommitRunFn_ErrorGetRepository(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 
@@ -95,6 +97,7 @@ func TestGetCommitRunFn_ErrorGetImagesAdded(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -128,6 +131,7 @@ func TestGetCommitRunFn_ErrorGetImagesRemoved(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -162,6 +166,7 @@ func TestGetCommitRunFn_ErrorAddToStage(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -196,6 +201,7 @@ func TestGetCommitRunFn_ErrorGenerateIndex(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -229,6 +235,7 @@ func TestGetCommitRunFn_ErrorGenerateImage(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -262,6 +269,7 @@ func TestGetCommitRunFn_ErrorGenerateCommitMessage(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir
@@ -287,6 +295,7 @@ func TestGetCommitRunFn_ErrorCreateCommit(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
 	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	viper.Reset()
 	viper.SetFs(ctx.FS)
 	path := ctx.WorkingDir

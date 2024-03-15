@@ -12,6 +12,7 @@ func Test_Version_ExecuteCommand(t *testing.T) {
 	cmd := GetVersionCmd()
 	b := bytes.NewBufferString("")
 	cmd.SetOut(b)
+	cmd.SetErr(b)
 	_ = cmd.Execute()
 
 	out, err := ioutil.ReadAll(b)

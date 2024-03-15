@@ -10,6 +10,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
+	"io"
 	"path/filepath"
 	"strings"
 )
@@ -25,6 +26,7 @@ type Repository interface {
 	Worktree() (*git.Worktree, error)
 	ResolveRevision(in plumbing.Revision) (*plumbing.Hash, error)
 	CommitObject(h plumbing.Hash) (*object.Commit, error)
+	CommitObjects() (object.CommitIter, error)
 }
 
 type Worktree interface {
@@ -39,6 +41,7 @@ type Manager interface {
 	CommitFileContent(hash *plumbing.Hash, path string) (string, error)
 	AddWithOptions(opts *git.AddOptions) error
 	CreateCommit(msg string, opts *git.CommitOptions) (plumbing.Hash, error)
+	GetCommitFilesChanged(hash string) ([]string, error)
 }
 
 var _ Manager = &Git{}
@@ -65,6 +68,7 @@ func (g Git) CommitFileContent(hash *plumbing.Hash, path string) (string, error)
 	if err != nil {
 		return "", err
 	}
+
 	file, err := commitObject.File(path)
 	if err != nil {
 		return "", err
@@ -74,6 +78,56 @@ func (g Git) CommitFileContent(hash *plumbing.Hash, path string) (string, error)
 
 func (g Git) AddWithOptions(opts *git.AddOptions) error {
 	return g.w.AddWithOptions(opts)
+}
+
+func (g Git) GetCommitFilesChanged(hash string) ([]string, error) {
+	var commit *object.Commit
+	var err error
+	files := []string{}
+	if len(hash) < 40 {
+		cl, _ := g.r.CommitObjects()
+		_ = cl.ForEach(func(c *object.Commit) error {
+			if c.Hash.String()[:len(hash)] == hash {
+				commit = c
+				cl.Close()
+			}
+			return nil
+		})
+	} else {
+		commit, _ = g.r.CommitObject(plumbing.NewHash(hash))
+	}
+
+	if commit == nil {
+		return nil, fmt.Errorf("commit not found")
+	}
+
+	parentCommit, errParent := commit.Parents().Next()
+	if errParent != nil {
+		if errParent == io.EOF {
+			fl, _ := commit.Files()
+			_ = fl.ForEach(func(f *object.File) error {
+				files = append(files, f.Name)
+				return nil
+			})
+		} else {
+			return files, err
+		}
+	} else {
+		patch, _ := parentCommit.Patch(commit)
+		for _, filePatch := range patch.FilePatches() {
+			from, to := filePatch.Files()
+			if from == nil {
+				files = append(files, to.Path())
+			} else if to == nil {
+				files = append(files, from.Path())
+			} else if from.Path() != to.Path() {
+				files = append(files, to.Path())
+			} else {
+				files = append(files, from.Path())
+			}
+		}
+	}
+	return files, nil
 }
 
 var CreateGit = func(ctx *context.Context) (Manager, error) {

@@ -1,8 +1,10 @@
 package build
 
 import (
-	"errors"
+	"github.com/alexandreh2ag/mib/container/docker"
 	"github.com/alexandreh2ag/mib/context"
+	"github.com/alexandreh2ag/mib/git"
+	"github.com/alexandreh2ag/mib/loader"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +24,31 @@ func GetCommitCmd(ctx *context.Context) *cobra.Command {
 
 func GetCommitRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		return errors.New("implement me")
+		pushImages, _ := cmd.Flags().GetBool(PushImages)
+		commitHash, _ := cmd.Flags().GetString(Commit)
+		builder := ctx.Builders.GetInstance(docker.KeyBuilder)
+		gitManager, errCreateGit := git.CreateGit(ctx)
+		if errCreateGit != nil {
+			return errCreateGit
+		}
+		images := loader.LoadImages(ctx)
+		filesChanged, errGetChanged := gitManager.GetCommitFilesChanged(commitHash)
+		if errGetChanged != nil {
+			return errGetChanged
+		}
+
+		images.FlagChanged(loader.RemoveExtExcludePath(ctx.WorkingDir, ctx.Config.Build.ExtensionExclude, filesChanged))
+		errBuild := builder.BuildImages(images)
+		if errBuild != nil {
+			return errBuild
+		}
+
+		if pushImages {
+			errPush := builder.PushImages(images)
+			if errPush != nil {
+				return errPush
+			}
+		}
+		return nil
 	}
 }
