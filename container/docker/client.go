@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -14,6 +15,9 @@ import (
 	dockerApiTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/moby/term"
+	"strings"
 )
 
 const (
@@ -70,7 +74,7 @@ func (b BuilderDocker) BuildImages(images types.Images) error {
 }
 
 func (b BuilderDocker) Build(image *types.Image) error {
-	b.ctx.Logger.Debug(fmt.Sprintf("Start building %s", image.GetFullName()))
+	b.ctx.Logger.Info(fmt.Sprintf("Start building %s", image.GetFullName()))
 	dockerBuildContext, err := archive.TarWithOptions(image.Path, &archive.TarOptions{})
 	if err != nil {
 		return fmt.Errorf("error when build tar option for %s with error: %v", image.GetFullName(), err)
@@ -92,9 +96,23 @@ func (b BuilderDocker) Build(image *types.Image) error {
 			"mib.version": version.GetFormattedVersion(),
 		},
 	}
-	_, err = b.client.ImageBuild(context.Background(), dockerBuildContext, options)
-	b.ctx.Logger.Debug(fmt.Sprintf("Finish building %s", image.GetFullName()))
-	return err
+	buildResponse, errBuild := b.client.ImageBuild(context.Background(), dockerBuildContext, options)
+	if errBuild != nil {
+		return errBuild
+	}
+	defer func() {
+		_ = buildResponse.Body.Close()
+	}()
+	stringBuffer := bytes.NewBufferString("")
+	termFd, isTerm := term.GetFdInfo(stringBuffer)
+	_ = jsonmessage.DisplayJSONMessagesStream(buildResponse.Body, stringBuffer, termFd, isTerm, nil)
+	logger := b.ctx.Logger.With("image", image.Name)
+	for _, line := range strings.Split(stringBuffer.String(), "\n") {
+		logger.Debug(line)
+	}
+	b.ctx.Logger.Info(fmt.Sprintf("Finish building %s", image.GetFullName()))
+
+	return nil
 }
 
 func (b BuilderDocker) PushImages(images types.Images) error {
@@ -118,7 +136,7 @@ func (b BuilderDocker) PushImages(images types.Images) error {
 }
 
 func (b BuilderDocker) Push(tag string) error {
-	b.ctx.Logger.Debug(fmt.Sprintf("Start pushing %s", tag))
+	b.ctx.Logger.Info(fmt.Sprintf("Start pushing %s", tag))
 	ref, err := reference.ParseNormalizedNamed(tag)
 	if err != nil {
 		return fmt.Errorf("unable to format docker tag %s", tag)
@@ -138,7 +156,20 @@ func (b BuilderDocker) Push(tag string) error {
 		RegistryAuth: base64.URLEncoding.EncodeToString(authString),
 		All:          false,
 	}
-	_, err = b.client.ImagePush(context.Background(), tag, options)
-	b.ctx.Logger.Debug(fmt.Sprintf("Finish pushing %s", tag))
+	pushResponse, errPush := b.client.ImagePush(context.Background(), tag, options)
+	if errPush != nil {
+		return errPush
+	}
+	defer func() {
+		_ = pushResponse.Close()
+	}()
+	stringBuffer := bytes.NewBufferString("")
+	termFd, isTerm := term.GetFdInfo(stringBuffer)
+	_ = jsonmessage.DisplayJSONMessagesStream(pushResponse, stringBuffer, termFd, isTerm, nil)
+	logger := b.ctx.Logger.With("image", tag)
+	for _, line := range strings.Split(stringBuffer.String(), "\n") {
+		logger.Debug(line)
+	}
+	b.ctx.Logger.Info(fmt.Sprintf("Finish pushing %s", tag))
 	return err
 }

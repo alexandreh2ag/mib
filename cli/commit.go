@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"github.com/alexandreh2ag/mib/cli/generate"
 	"github.com/alexandreh2ag/mib/context"
@@ -71,6 +72,10 @@ func GetCommitRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 			if err != nil {
 				return err
 			}
+		}
+
+		if !mibGit.CheckIfFileStaged(gitManager) {
+			return errors.New("no change detected in stage")
 		}
 
 		ctx.Logger.Info(fmt.Sprintf("Images added %d, modified %d, removed %d", len(nameImagesAdded), len(nameImagesUpdated), len(nameImagesRemoved)))

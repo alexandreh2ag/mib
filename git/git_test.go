@@ -274,6 +274,34 @@ func TestGetImagesNameRemoved_ErrorMarshal(t *testing.T) {
 	assert.ElementsMatch(t, want, got)
 }
 
+func TestCheckIfFileStaged_SuccessChangeDetected(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mockgit.NewMockManager(ctrl)
+	m.EXPECT().Status().Times(1).Return(
+		git.Status{
+			"foo/Dockerfile": &git.FileStatus{Worktree: git.Unmodified, Staging: git.Added},
+		},
+		nil,
+	)
+	got := CheckIfFileStaged(m)
+	assert.True(t, got)
+}
+
+func TestCheckIfFileStaged_SuccessNoChangeDetected(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mockgit.NewMockManager(ctrl)
+	m.EXPECT().Status().Times(1).Return(
+		git.Status{
+			"foo/Dockerfile": &git.FileStatus{Worktree: git.Unmodified, Staging: git.Untracked},
+		},
+		nil,
+	)
+	got := CheckIfFileStaged(m)
+	assert.False(t, got)
+}
+
 func TestHasUntrackedFiles_SuccessNothing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

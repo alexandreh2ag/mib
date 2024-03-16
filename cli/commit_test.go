@@ -38,7 +38,7 @@ func TestGetCommitRunFn_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	m := mockgit.NewMockManager(ctrl)
-	m.EXPECT().Status().Times(4).Return(
+	m.EXPECT().Status().Times(5).Return(
 		git.Status{
 			"foo/Dockerfile":     &git.FileStatus{Worktree: git.Unmodified, Staging: git.Modified},
 			"bar/test.yml":       &git.FileStatus{Staging: git.Added},
@@ -197,6 +197,36 @@ func TestGetCommitRunFn_ErrorAddToStage(t *testing.T) {
 	assert.Contains(t, err.Error(), "add file bar/test.yml fail with error")
 }
 
+func TestGetCommitRunFn_ErrorNoChangeDetected(t *testing.T) {
+	ctx := context.TestContext(nil)
+	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	viper.Reset()
+	viper.SetFs(ctx.FS)
+	path := ctx.WorkingDir
+	_ = ctx.FS.Mkdir(path, 0775)
+	initFS(ctx.FS)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mockgit.NewMockManager(ctrl)
+	m.EXPECT().Status().Times(5).Return(
+		git.Status{
+			"foo/Dockerfile": &git.FileStatus{Worktree: git.Unmodified, Staging: git.Unmodified},
+		},
+		nil,
+	)
+
+	m.EXPECT().AddWithOptions(gomock.Any()).Times(1).Return(errors.New("error"))
+	mibGit.CreateGit = func(ctx *context.Context) (mibGit.Manager, error) {
+		return m, nil
+	}
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no change detected in stage")
+}
+
 func TestGetCommitRunFn_ErrorGenerateIndex(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetCommitCmd(ctx)
@@ -210,7 +240,7 @@ func TestGetCommitRunFn_ErrorGenerateIndex(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	m := mockgit.NewMockManager(ctrl)
-	m.EXPECT().Status().Times(4).Return(
+	m.EXPECT().Status().Times(5).Return(
 		git.Status{
 			"foo/Dockerfile":     &git.FileStatus{Worktree: git.Unmodified, Staging: git.Modified},
 			"bar/test.yml":       &git.FileStatus{Worktree: git.Modified},
@@ -244,7 +274,7 @@ func TestGetCommitRunFn_ErrorGenerateImage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	m := mockgit.NewMockManager(ctrl)
-	m.EXPECT().Status().Times(4).Return(
+	m.EXPECT().Status().Times(5).Return(
 		git.Status{
 			"foo/Dockerfile":     &git.FileStatus{Worktree: git.Unmodified, Staging: git.Modified},
 			"bar/test.yml":       &git.FileStatus{Worktree: git.Modified},
@@ -278,8 +308,8 @@ func TestGetCommitRunFn_ErrorGenerateCommitMessage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	m := mockgit.NewMockManager(ctrl)
-	m.EXPECT().Status().Times(4).Return(
-		git.Status{},
+	m.EXPECT().Status().Times(5).Return(
+		git.Status{"file.md": &git.FileStatus{Worktree: git.Unmodified, Staging: git.Modified}},
 		nil,
 	)
 	mibGit.CreateGit = func(ctx *context.Context) (mibGit.Manager, error) {
@@ -304,7 +334,7 @@ func TestGetCommitRunFn_ErrorCreateCommit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	m := mockgit.NewMockManager(ctrl)
-	m.EXPECT().Status().Times(4).Return(
+	m.EXPECT().Status().Times(5).Return(
 		git.Status{
 			"foo/Dockerfile":     &git.FileStatus{Worktree: git.Unmodified, Staging: git.Modified},
 			"bar/test.yml":       &git.FileStatus{Worktree: git.Modified},

@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -217,6 +218,16 @@ func GetImagesNameRemoved(m Manager) ([]string, error) {
 	return names, nil
 }
 
+func CheckIfFileStaged(m Manager) bool {
+	status, _ := m.Status()
+	for _, fileStatus := range status {
+		if slices.Contains([]git.StatusCode{git.Modified, git.Added, git.Renamed, git.Deleted}, fileStatus.Staging) {
+			return true
+		}
+	}
+	return false
+}
+
 func HasUntrackedFiles(m Manager) bool {
 	status, _ := m.Status()
 
@@ -231,7 +242,7 @@ func HasUntrackedFiles(m Manager) bool {
 func AddModifiedFilesToStage(m Manager) error {
 	status, _ := m.Status()
 	for filePath, fileStatus := range status {
-		if fileStatus.Worktree != git.Modified {
+		if fileStatus.Worktree != git.Modified && fileStatus.Worktree != git.Deleted {
 			continue
 		}
 		err := AddFileToStage(m, filePath)
