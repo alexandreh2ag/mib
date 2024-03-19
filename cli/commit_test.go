@@ -216,8 +216,6 @@ func TestGetCommitRunFn_ErrorNoChangeDetected(t *testing.T) {
 		},
 		nil,
 	)
-
-	m.EXPECT().AddWithOptions(gomock.Any()).Times(1).Return(errors.New("error"))
 	mibGit.CreateGit = func(ctx *context.Context) (mibGit.Manager, error) {
 		return m, nil
 	}
