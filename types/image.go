@@ -1,8 +1,8 @@
 package types
 
 type ImageName struct {
-	Name string `yaml:"name"`
-	Tag  string `yaml:"tag"`
+	Name string `yaml:"name" validate:"required"`
+	Tag  string `yaml:"tag" validate:"required"`
 }
 
 func (imn ImageName) GetFullName() string {
@@ -18,17 +18,19 @@ func (imn ImageName) GetTag() string {
 }
 
 type Image struct {
-	ImageName        `yaml:",inline"`
-	Alias            []ImageName `yaml:"alias"`
+	ImageName        `yaml:",inline" validate:"required"`
+	Alias            []ImageName `yaml:"alias" validate:"omitempty,dive"`
 	Path             string
 	RelativeDir      string
-	Parent           *Image
-	Children         Images
+	Parent           *Image `validate:"-"`
+	Children         Images `validate:"omitempty,dive"`
 	HasLocalParent   bool
 	HasToBuild       bool
 	HasParentToBuild bool
 	EnvVariables     map[string]string `yaml:"envvars"`
 	Packages         map[string]string `yaml:"packages"`
+	Platforms        []string          `yaml:"platforms" validate:"platform-parent"`
+	//Platforms []string `yaml:"platforms" validate:"-"`
 }
 
 func (im Image) GetParents() Images {

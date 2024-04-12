@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"fmt"
 	"github.com/alexandreh2ag/mib/context"
 	mibGit "github.com/alexandreh2ag/mib/git"
 	mockgit "github.com/alexandreh2ag/mib/mock/git"
@@ -91,6 +92,34 @@ func TestGetCommitRunFn_ErrorGetRepository(t *testing.T) {
 	err := GetCommitRunFn(ctx)(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error")
+}
+
+func TestGetCommitRunFn_FailLoadImages(t *testing.T) {
+	ctx := context.TestContext(nil)
+	cmd := GetCommitCmd(ctx)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	viper.Reset()
+	viper.SetFs(ctx.FS)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mockgit.NewMockManager(ctrl)
+	m.EXPECT().Status().Times(1).Return(
+		git.Status{
+			"foo/Dockerfile": &git.FileStatus{Worktree: git.Unmodified, Staging: git.Modified},
+		},
+		nil,
+	)
+	mibGit.CreateGit = func(ctx *context.Context) (mibGit.Manager, error) {
+		return m, nil
+	}
+	path := ctx.WorkingDir
+	_ = afero.WriteFile(ctx.FS, fmt.Sprintf("%s/foo/mib.yml", path), []byte("name: foo\ntag: "), 0644)
+	_ = afero.WriteFile(ctx.FS, fmt.Sprintf("%s/foo/Dockerfile", path), []byte("FROM debian:latest"), 0644)
+
+	err := GetCommitRunFn(ctx)(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "images configuration file is not valid")
 }
 
 func TestGetCommitRunFn_ErrorGetImagesAdded(t *testing.T) {

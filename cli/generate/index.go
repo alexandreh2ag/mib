@@ -17,7 +17,10 @@ func GetIndexCmd(ctx *context.Context) *cobra.Command {
 
 func GetIndexRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		images := loader.LoadImages(ctx)
+		images, err := loader.LoadImages(ctx)
+		if err != nil {
+			return err
+		}
 		return template.GenerateReadmeIndex(ctx, images, GetIndexReadmePath(ctx))
 	}
 }

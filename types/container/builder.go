@@ -13,8 +13,8 @@ func (bs Builders) GetInstance(name string) BuilderImage {
 
 type BuilderImage interface {
 	Type() string
-	BuildImages(images types.Images) error
-	Build(image *types.Image) error
+	BuildImages(images types.Images, pushImages bool) error
+	Build(image *types.Image, pushImages bool) error
 	PushImages(images types.Images) error
 	Push(tag string) error
 }

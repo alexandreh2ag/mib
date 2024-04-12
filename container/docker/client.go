@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"github.com/alexandreh2ag/mib/container"
 	mibContext "github.com/alexandreh2ag/mib/context"
+	"github.com/alexandreh2ag/mib/exec"
 	"github.com/alexandreh2ag/mib/types"
 	typesContainers "github.com/alexandreh2ag/mib/types/container"
 	"github.com/alexandreh2ag/mib/version"
 	"github.com/distribution/reference"
 	dockerApiTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/moby/term"
 	"strings"
@@ -55,16 +55,16 @@ func (b BuilderDocker) Type() string {
 	return KeyBuilder
 }
 
-func (b BuilderDocker) BuildImages(images types.Images) error {
+func (b BuilderDocker) BuildImages(images types.Images, pushImages bool) error {
 	for _, image := range images {
 		if image.HasToBuild {
-			err := b.Build(image)
+			err := b.Build(image, pushImages)
 			if err != nil {
 				return fmt.Errorf("fail to build %s with error: %v", image.GetFullName(), err)
 			}
 		}
 		if len(image.Children) > 0 {
-			errChildren := b.BuildImages(image.Children)
+			errChildren := b.BuildImages(image.Children, pushImages)
 			if errChildren != nil {
 				return errChildren
 			}
@@ -73,43 +73,53 @@ func (b BuilderDocker) BuildImages(images types.Images) error {
 	return nil
 }
 
-func (b BuilderDocker) Build(image *types.Image) error {
+func (b BuilderDocker) Build(image *types.Image, pushImages bool) error {
 	b.ctx.Logger.Info(fmt.Sprintf("Start building %s", image.GetFullName()))
-	dockerBuildContext, err := archive.TarWithOptions(image.Path, &archive.TarOptions{})
-	if err != nil {
-		return fmt.Errorf("error when build tar option for %s with error: %v", image.GetFullName(), err)
-	}
-	defer func() {
-		_ = dockerBuildContext.Close()
-	}()
-
-	args := map[string]*string{}
-	options := dockerApiTypes.ImageBuildOptions{
-		SuppressOutput: false,
-		Remove:         true,
-		ForceRemove:    true,
-		PullParent:     false,
-		Tags:           image.GetNames(),
-		BuildArgs:      args,
-		AuthConfigs:    b.AuthConfig.AuthConfigs,
-		Labels: map[string]string{
-			"mib.version": version.GetFormattedVersion(),
-		},
-	}
-	buildResponse, errBuild := b.client.ImageBuild(context.Background(), dockerBuildContext, options)
-	if errBuild != nil {
-		return errBuild
-	}
-	defer func() {
-		_ = buildResponse.Body.Close()
-	}()
-	stringBuffer := bytes.NewBufferString("")
-	termFd, isTerm := term.GetFdInfo(stringBuffer)
-	_ = jsonmessage.DisplayJSONMessagesStream(buildResponse.Body, stringBuffer, termFd, isTerm, nil)
 	logger := b.ctx.Logger.With("image", image.Name)
-	for _, line := range strings.Split(stringBuffer.String(), "\n") {
+	//cmdArgs := []string{"buildx", "build", "--progress", "plain", "--provenance", "false"}
+	cmdArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+
+	labels := []string{
+		fmt.Sprintf("%s=%s", "mib.version", version.GetFormattedVersion()),
+	}
+	argTags := sliceAddPrefixElement(image.GetNames(), "--tag")
+	cmdArgs = append(cmdArgs, argTags...)
+	argLabels := sliceAddPrefixElement(labels, "--label")
+	cmdArgs = append(cmdArgs, argLabels...)
+
+	if len(image.Platforms) > 0 {
+		cmdArgs = append(cmdArgs, []string{"--platform", strings.Join(image.Platforms, ",")}...)
+	}
+
+	stdout := bytes.NewBuffer([]byte(""))
+	stderr := bytes.NewBuffer([]byte(""))
+	if pushImages {
+		cmdArgs = append(cmdArgs, "--push")
+	}
+	cmdArgs = append(cmdArgs, ".")
+	cmd := exec.NewCmd("docker", cmdArgs...)
+	logger.Debug(fmt.Sprintf("command docker %s", cmdArgs))
+	cmd.SetDir(image.Path)
+	cmd.SetStdout(stdout)
+	cmd.SetStderr(stderr)
+	err := cmd.Run()
+	logsLines := strings.Split(stderr.String(), "\n")
+	for _, line := range logsLines {
 		logger.Debug(line)
 	}
+	if err != nil {
+		maxLine := 10
+		offset := len(logsLines) - maxLine
+		if len(logsLines) < maxLine {
+			offset = 0
+		}
+		errorLines := logsLines[offset:]
+		for _, line := range errorLines {
+			logger.Error(line)
+		}
+		return err
+	}
+
 	b.ctx.Logger.Info(fmt.Sprintf("Finish building %s", image.GetFullName()))
 
 	return nil
@@ -172,4 +182,12 @@ func (b BuilderDocker) Push(tag string) error {
 	}
 	b.ctx.Logger.Info(fmt.Sprintf("Finish pushing %s", tag))
 	return err
+}
+
+func sliceAddPrefixElement(list []string, prefix string) []string {
+	result := []string{}
+	for _, s := range list {
+		result = append(result, []string{prefix, s}...)
+	}
+	return result
 }

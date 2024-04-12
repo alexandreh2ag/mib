@@ -176,6 +176,12 @@ Commands:
 * Docker (18.06+)
 * Git (2.17+)
 
+### Packages 
+
+```bash
+sudo apt install -y qemu-user-static binfmt-support
+```
+
 ## Development
 
 * Install go-bindata:

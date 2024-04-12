@@ -17,7 +17,10 @@ func GetListCmd(ctx *context.Context) *cobra.Command {
 
 func GetListRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		images := loader.LoadImages(ctx)
+		images, err := loader.LoadImages(ctx)
+		if err != nil {
+			return err
+		}
 		if len(images) > 0 {
 			cmd.Println(printer.DisplayImagesTree(images))
 		} else {

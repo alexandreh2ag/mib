@@ -26,19 +26,15 @@ func GetDirtyRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 		if errGit != nil {
 			return errGit
 		}
-		images := loader.LoadImages(ctx)
+		images, err := loader.LoadImages(ctx)
+		if err != nil {
+			return err
+		}
 		filesChanged := git.GetStageFilesChanged(gitManager)
 		images.FlagChanged(loader.RemoveExtExcludePath(ctx.WorkingDir, ctx.Config.Build.ExtensionExclude, filesChanged))
-		errBuild := builder.BuildImages(images)
+		errBuild := builder.BuildImages(images, pushImages)
 		if errBuild != nil {
 			return errBuild
-		}
-
-		if pushImages {
-			errPush := builder.PushImages(images)
-			if errPush != nil {
-				return errPush
-			}
 		}
 
 		return nil

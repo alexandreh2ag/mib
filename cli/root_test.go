@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/alexandreh2ag/mib/config"
@@ -196,6 +197,28 @@ func TestGetRootPreRunEFn_FailedWithLogLevelFlag(t *testing.T) {
 	err := GetRootPreRunEFn(ctx)(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "slog: level string \"WRONG\": unknown name")
+}
+
+func TestGetRootPreRunEFn_FailedConfigValidator(t *testing.T) {
+	b := bytes.NewBufferString("")
+	ctx := context.TestContext(b)
+	cmd := GetRootCmd(ctx)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	fsFake := afero.NewMemMapFs()
+	viper.Reset()
+	viper.SetFs(fsFake)
+	path := "/app"
+	_ = fsFake.Mkdir(path, 0775)
+	_ = afero.WriteFile(fsFake, fmt.Sprintf("%s/config.yml", path), []byte("build: {extensionExclude: ''}"), 0644)
+
+	cmd.SetArgs([]string{})
+	_ = cmd.Execute()
+
+	err := GetRootPreRunEFn(ctx)(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "configuration file is not valid")
+	assert.Contains(t, b.String(), "Key: 'Config.Build.ExtensionExclude' Error:Field validation for 'ExtensionExclude' failed on the 'required' tag")
 }
 
 func TestGetRootPreRunEFn_FailedCreateBuilders(t *testing.T) {

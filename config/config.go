@@ -2,7 +2,7 @@ package config
 
 type Config struct {
 	Build    Build    `mapstructure:"build"`
-	Template Template `mapstructure:"template"`
+	Template Template `mapstructure:"template" validate:"omitempty,required"`
 }
 
 func (g *Config) Get() *Config {
@@ -10,12 +10,12 @@ func (g *Config) Get() *Config {
 }
 
 type Build struct {
-	ExtensionExclude string `mapstructure:"extensionExclude"`
+	ExtensionExclude string `mapstructure:"extensionExclude" validate:"required"`
 }
 
 type Template struct {
-	ImagePath string `mapstructure:"imagePath"`
-	IndexPath string `mapstructure:"indexPath"`
+	ImagePath string `mapstructure:"imagePath" validate:"omitempty,required"`
+	IndexPath string `mapstructure:"indexPath" validate:"omitempty,required"`
 }
 
 func NewConfig() Config {

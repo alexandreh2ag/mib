@@ -27,6 +27,21 @@ func TestGetAllRunFn_Success(t *testing.T) {
 	assert.True(t, exist)
 }
 
+func TestGetAllRunFn_FailLoadImages(t *testing.T) {
+	ctx := context.TestContext(nil)
+	cmd := GetAllCmd(ctx)
+	fsFake := ctx.FS
+	viper.Reset()
+	viper.SetFs(fsFake)
+	path := ctx.WorkingDir
+	_ = fsFake.Mkdir(path, 0775)
+	_ = afero.WriteFile(ctx.FS, fmt.Sprintf("%s/foo/mib.yml", path), []byte("name: foo\ntag: "), 0644)
+	_ = afero.WriteFile(ctx.FS, fmt.Sprintf("%s/foo/Dockerfile", path), []byte("FROM debian:latest"), 0644)
+	err := GetAllRunFn(ctx)(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "images configuration file is not valid")
+}
+
 func TestGetAllRunFn_ErrorWIthImagesTemplates(t *testing.T) {
 	ctx := context.TestContext(nil)
 	cmd := GetAllCmd(ctx)

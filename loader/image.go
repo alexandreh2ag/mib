@@ -1,9 +1,12 @@
 package loader
 
 import (
+	"errors"
 	"fmt"
 	"github.com/alexandreh2ag/mib/context"
 	"github.com/alexandreh2ag/mib/types"
+	validatorMIB "github.com/alexandreh2ag/mib/validator"
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -16,7 +19,7 @@ import (
 
 var DataFilename = "mib.yml"
 
-func LoadImages(ctx *context.Context) types.Images {
+func LoadImages(ctx *context.Context) (types.Images, error) {
 	images := types.Images{}
 	afs := &afero.Afero{Fs: ctx.FS}
 	_ = afs.Walk(ctx.WorkingDir, func(fp string, fi os.FileInfo, err error) error {
@@ -40,7 +43,22 @@ func LoadImages(ctx *context.Context) types.Images {
 		}
 		return nil
 	})
-	return orderDependencyImages(images)
+	imagesOrdered := orderDependencyImages(images)
+	validate := validatorMIB.New()
+	err := validate.Var(imagesOrdered, "dive")
+	if err != nil {
+		var validationErrors validator.ValidationErrors
+		switch {
+		case errors.As(err, &validationErrors):
+			for _, validationError := range validationErrors {
+				ctx.Logger.Error(fmt.Sprintf("%v", validationError))
+			}
+			return imagesOrdered, errors.New("images configuration file is not valid")
+		default:
+			return imagesOrdered, err
+		}
+	}
+	return imagesOrdered, nil
 }
 
 func orderDependencyImages(imagesToSort types.Images) types.Images {
@@ -54,6 +72,9 @@ func orderDependencyImages(imagesToSort types.Images) types.Images {
 					imageData.HasLocalParent = true
 					imageData.Parent = mainImageData
 					mainImageData.Children = append(mainImageData.Children, imageData)
+					if len(imageData.Platforms) == 0 && len(mainImageData.Platforms) > 0 {
+						imageData.Platforms = mainImageData.Platforms
+					}
 				}
 			}
 		}

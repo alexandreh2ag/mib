@@ -23,7 +23,11 @@ func GetDirtyRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 		if errGit != nil {
 			return errGit
 		}
-		images := loader.LoadImages(ctx)
+		images, err := loader.LoadImages(ctx)
+		if err != nil {
+			return err
+		}
+
 		filesChanged := git.GetStageFilesChanged(gitManager)
 		images.FlagChanged(loader.RemoveExtExcludePath(ctx.WorkingDir, ctx.Config.Build.ExtensionExclude, filesChanged))
 		return template.GenerateReadmeImages(ctx, images.GetImagesToBuild())

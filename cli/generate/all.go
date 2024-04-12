@@ -17,8 +17,11 @@ func GetAllCmd(ctx *context.Context) *cobra.Command {
 
 func GetAllRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		images := loader.LoadImages(ctx)
-		err := template.GenerateReadmeImages(ctx, images.GetAll())
+		images, err := loader.LoadImages(ctx)
+		if err != nil {
+			return err
+		}
+		err = template.GenerateReadmeImages(ctx, images.GetAll())
 		if err != nil {
 			return err
 		}

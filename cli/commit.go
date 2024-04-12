@@ -50,7 +50,10 @@ func GetCommitRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 			ctx.Logger.Warn("Some files are untracked. this may provoc inconsistent in build.")
 		}
 
-		images := loader.LoadImages(ctx)
+		images, err := loader.LoadImages(ctx)
+		if err != nil {
+			return err
+		}
 		filesChanged := mibGit.GetStageFilesChanged(gitManager)
 
 		images.FlagChanged(loader.RemoveExtExcludePath(ctx.WorkingDir, ctx.Config.Build.ExtensionExclude, filesChanged))

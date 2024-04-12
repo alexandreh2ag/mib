@@ -44,3 +44,21 @@ func TestGetListRunFn_Success_WithImages(t *testing.T) {
 	err := GetListRunFn(ctx)(cmd, []string{})
 	assert.NoError(t, err)
 }
+
+func TestGetListRunFn_FailLoadImages(t *testing.T) {
+	ctx := context.TestContext(nil)
+	cmd := GetListCmd(ctx)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	fsFake := afero.NewMemMapFs()
+	viper.Reset()
+	viper.SetFs(fsFake)
+	path := "/app"
+	_ = fsFake.Mkdir(path, 0775)
+	_ = afero.WriteFile(ctx.FS, "/app/foo/mib.yml", []byte("name: foo\ntag: "), 0644)
+	_ = afero.WriteFile(ctx.FS, "/app/foo/Dockerfile", []byte("FROM debian:latest"), 0644)
+
+	err := GetListRunFn(ctx)(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "images configuration file is not valid")
+}

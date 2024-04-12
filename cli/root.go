@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"github.com/alexandreh2ag/mib/container"
 	"github.com/alexandreh2ag/mib/template"
+	validatorMIB "github.com/alexandreh2ag/mib/validator"
+	"github.com/go-playground/validator/v10"
 	"log/slog"
 	"path"
 	"path/filepath"
@@ -68,6 +71,20 @@ func GetRootPreRunEFn(ctx *context.Context) func(*cobra.Command, []string) error
 		}
 		ctx.Logger.Info(fmt.Sprintf("Log level %s", ctx.LogLevel.String()))
 		ctx.Logger.Info(fmt.Sprintf("Use working dir %s", ctx.WorkingDir))
+		validate := validatorMIB.New()
+		err = validate.Struct(ctx.Config)
+		if err != nil {
+			var validationErrors validator.ValidationErrors
+			switch {
+			case errors.As(err, &validationErrors):
+				for _, validationError := range validationErrors {
+					ctx.Logger.Error(fmt.Sprintf("%v", validationError))
+				}
+				return errors.New("configuration file is not valid")
+			default:
+				return err
+			}
+		}
 
 		for key, fn := range container.BuilderFnFactory {
 			builder, errCreateBuilder := fn(ctx)

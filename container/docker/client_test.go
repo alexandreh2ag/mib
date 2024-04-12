@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/alexandreh2ag/mib/context"
+	"github.com/alexandreh2ag/mib/exec"
 	mock_docker "github.com/alexandreh2ag/mib/mock/docker"
+	mock_exec "github.com/alexandreh2ag/mib/mock/exec"
 	"github.com/alexandreh2ag/mib/types"
-	dockerApiTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/spf13/afero"
@@ -185,14 +186,98 @@ func TestBuilderDocker_PushImages_ErrorPushChild(t *testing.T) {
 func TestBuilderDocker_Build_Success(t *testing.T) {
 	ctx := context.TestContext(nil)
 	auth := AuthConfig{AuthConfigs: map[string]registry.AuthConfig{}}
-	image := &types.Image{ImageName: types.ImageName{Name: "registry.example.com/foo", Tag: "0.1"}, Alias: []types.ImageName{{Name: "registry2.example.com/foo", Tag: "0.1"}}}
+	image := &types.Image{ImageName: types.ImageName{Name: "registry.example.com/foo", Tag: "0.1"}, Path: "/app", Alias: []types.ImageName{{Name: "registry2.example.com/foo", Tag: "0.1"}}}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	clientDocker := mock_docker.NewMockAPIClient(ctrl)
-	clientDocker.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dockerApiTypes.ImageBuildResponse{Body: io.NopCloser(strings.NewReader(""))}, nil)
-	b := BuilderDocker{ctx: ctx, AuthConfig: &auth, client: clientDocker}
-	err := b.Build(image)
+	cmd := mock_exec.NewMockExecutable(ctrl)
+	cmd.EXPECT().SetDir(gomock.Eq("/app")).Times(1)
+	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
+	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
+	cmd.EXPECT().Run().Times(1).Return(nil)
+	defaultsArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--tag", "registry2.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "."}
+	wantArgs := append(defaultsArgs, testArgs...)
+	exec.NewCmd = func(name string, arg ...string) exec.Executable {
+		assert.Equal(t, "docker", name)
+		assert.Equal(t, wantArgs, arg)
+		return cmd
+	}
+	b := BuilderDocker{ctx: ctx, AuthConfig: &auth}
+	err := b.Build(image, false)
 	assert.NoError(t, err)
+}
+
+func TestBuilderDocker_Build_SuccessWithPush(t *testing.T) {
+	ctx := context.TestContext(nil)
+	auth := AuthConfig{AuthConfigs: map[string]registry.AuthConfig{}}
+	image := &types.Image{ImageName: types.ImageName{Name: "registry.example.com/foo", Tag: "0.1"}, Path: "/app", Alias: []types.ImageName{{Name: "registry2.example.com/foo", Tag: "0.1"}}}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	cmd := mock_exec.NewMockExecutable(ctrl)
+	cmd.EXPECT().SetDir(gomock.Eq("/app")).Times(1)
+	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
+	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
+	cmd.EXPECT().Run().Times(1).Return(nil)
+	defaultsArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--tag", "registry2.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "--push", "."}
+	wantArgs := append(defaultsArgs, testArgs...)
+	exec.NewCmd = func(name string, arg ...string) exec.Executable {
+		assert.Equal(t, "docker", name)
+		assert.Equal(t, wantArgs, arg)
+		return cmd
+	}
+	b := BuilderDocker{ctx: ctx, AuthConfig: &auth}
+	err := b.Build(image, true)
+	assert.NoError(t, err)
+}
+
+func TestBuilderDocker_Build_SuccessMultiPlatforms(t *testing.T) {
+	ctx := context.TestContext(nil)
+	auth := AuthConfig{AuthConfigs: map[string]registry.AuthConfig{}}
+	image := &types.Image{ImageName: types.ImageName{Name: "registry.example.com/foo", Tag: "0.1"}, Path: "/app", Platforms: []string{"linux/amd64", "linux/arm64/v8"}}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	cmd := mock_exec.NewMockExecutable(ctrl)
+	cmd.EXPECT().SetDir(gomock.Eq("/app")).Times(1)
+	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
+	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
+	cmd.EXPECT().Run().Times(1).Return(nil)
+	defaultsArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "--platform", "linux/amd64,linux/arm64/v8", "."}
+	wantArgs := append(defaultsArgs, testArgs...)
+	exec.NewCmd = func(name string, arg ...string) exec.Executable {
+		assert.Equal(t, "docker", name)
+		assert.Equal(t, wantArgs, arg)
+		return cmd
+	}
+	b := BuilderDocker{ctx: ctx, AuthConfig: &auth}
+	err := b.Build(image, false)
+	assert.NoError(t, err)
+}
+
+func TestBuilderDocker_Build_Error(t *testing.T) {
+	ctx := context.TestContext(nil)
+	auth := AuthConfig{AuthConfigs: map[string]registry.AuthConfig{}}
+	image := &types.Image{ImageName: types.ImageName{Name: "registry.example.com/foo", Tag: "0.1"}, Path: "/app"}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	cmd := mock_exec.NewMockExecutable(ctrl)
+	cmd.EXPECT().SetDir(gomock.Eq("/app")).Times(1)
+	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
+	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
+	cmd.EXPECT().Run().Times(1).Return(errors.New("fail build"))
+	defaultsArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "."}
+	wantArgs := append(defaultsArgs, testArgs...)
+	exec.NewCmd = func(name string, arg ...string) exec.Executable {
+		assert.Equal(t, "docker", name)
+		assert.Equal(t, wantArgs, arg)
+		return cmd
+	}
+	b := BuilderDocker{ctx: ctx, AuthConfig: &auth}
+	err := b.Build(image, false)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "fail build")
 }
 
 func TestBuilderDocker_BuildImages_Success(t *testing.T) {
@@ -204,13 +289,17 @@ func TestBuilderDocker_BuildImages_Success(t *testing.T) {
 	images := types.Images{image1}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	clientDocker := mock_docker.NewMockAPIClient(ctrl)
-	gomock.InOrder(
-		clientDocker.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dockerApiTypes.ImageBuildResponse{Body: io.NopCloser(strings.NewReader(""))}, nil),
-		clientDocker.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dockerApiTypes.ImageBuildResponse{Body: io.NopCloser(strings.NewReader(""))}, nil),
-	)
-	b := BuilderDocker{ctx: ctx, AuthConfig: &auth, client: clientDocker}
-	err := b.BuildImages(images)
+	cmd := mock_exec.NewMockExecutable(ctrl)
+	cmd.EXPECT().SetDir(gomock.Any()).Times(2)
+	cmd.EXPECT().SetStdout(gomock.Any()).Times(2)
+	cmd.EXPECT().SetStderr(gomock.Any()).Times(2)
+	cmd.EXPECT().Run().Times(2).Return(nil)
+
+	exec.NewCmd = func(name string, arg ...string) exec.Executable {
+		return cmd
+	}
+	b := BuilderDocker{ctx: ctx, AuthConfig: &auth}
+	err := b.BuildImages(images, false)
 	assert.NoError(t, err)
 }
 
@@ -222,12 +311,17 @@ func TestBuilderDocker_BuildImages_ErrorBuild(t *testing.T) {
 	images := types.Images{image1}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	clientDocker := mock_docker.NewMockAPIClient(ctrl)
-	gomock.InOrder(
-		clientDocker.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dockerApiTypes.ImageBuildResponse{Body: io.NopCloser(strings.NewReader(""))}, errors.New("error")),
-	)
-	b := BuilderDocker{ctx: ctx, AuthConfig: &auth, client: clientDocker}
-	err := b.BuildImages(images)
+	cmd := mock_exec.NewMockExecutable(ctrl)
+	cmd.EXPECT().SetDir(gomock.Any()).Times(1)
+	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
+	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
+	cmd.EXPECT().Run().Times(1).Return(errors.New("error"))
+
+	exec.NewCmd = func(name string, arg ...string) exec.Executable {
+		return cmd
+	}
+	b := BuilderDocker{ctx: ctx, AuthConfig: &auth}
+	err := b.BuildImages(images, false)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error")
 }
@@ -240,13 +334,28 @@ func TestBuilderDocker_BuildImages_ErrorBuildChild(t *testing.T) {
 	images := types.Images{image1}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	clientDocker := mock_docker.NewMockAPIClient(ctrl)
+	cmd := mock_exec.NewMockExecutable(ctrl)
+	cmd.EXPECT().SetDir(gomock.Any()).Times(2)
+	cmd.EXPECT().SetStdout(gomock.Any()).Times(2)
+	cmd.EXPECT().SetStderr(gomock.Any()).Times(2)
 	gomock.InOrder(
-		clientDocker.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dockerApiTypes.ImageBuildResponse{Body: io.NopCloser(strings.NewReader(""))}, nil),
-		clientDocker.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(dockerApiTypes.ImageBuildResponse{Body: io.NopCloser(strings.NewReader(""))}, errors.New("error")),
+		cmd.EXPECT().Run().Times(1).Return(nil),
+		cmd.EXPECT().Run().Times(1).Return(errors.New("error")),
 	)
-	b := BuilderDocker{ctx: ctx, AuthConfig: &auth, client: clientDocker}
-	err := b.BuildImages(images)
+
+	exec.NewCmd = func(name string, arg ...string) exec.Executable {
+		return cmd
+	}
+	b := BuilderDocker{ctx: ctx, AuthConfig: &auth}
+	err := b.BuildImages(images, false)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error")
+}
+
+func Test_sliceAddPrefixElement(t *testing.T) {
+	list := []string{"foo", "bar"}
+	want := []string{"test", "foo", "test", "bar"}
+
+	got := sliceAddPrefixElement(list, "test")
+	assert.Equal(t, want, got)
 }

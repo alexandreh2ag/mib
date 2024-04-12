@@ -4,6 +4,7 @@ import (
 	"github.com/alexandreh2ag/mib/context"
 	"github.com/alexandreh2ag/mib/types"
 	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -126,16 +127,18 @@ func TestLoadImages(t *testing.T) {
 		ctx *context.Context
 	}
 	tests := []struct {
-		name   string
-		args   args
-		preRun func(ctx *context.Context)
-		want   types.Images
+		name    string
+		args    args
+		preRun  func(ctx *context.Context)
+		want    types.Images
+		wantErr assert.ErrorAssertionFunc
 	}{
 		{
-			name:   "CheckOKWhenEmpty",
-			args:   args{ctx: context.TestContext(nil)},
-			preRun: func(ctx *context.Context) {},
-			want:   types.Images{},
+			name:    "CheckOKWhenEmpty",
+			args:    args{ctx: context.TestContext(nil)},
+			preRun:  func(ctx *context.Context) {},
+			want:    types.Images{},
+			wantErr: assert.NoError,
 		},
 		{
 			name: "CheckOKWhenNoFileMatch",
@@ -143,7 +146,8 @@ func TestLoadImages(t *testing.T) {
 			preRun: func(ctx *context.Context) {
 				afero.WriteFile(ctx.FS, "/app/test/test", []byte("content"), 0644)
 			},
-			want: types.Images{},
+			want:    types.Images{},
+			wantErr: assert.NoError,
 		},
 		{
 			name: "CheckOKWithOneImage",
@@ -155,6 +159,7 @@ func TestLoadImages(t *testing.T) {
 			want: types.Images{
 				&types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}},
 			},
+			wantErr: assert.NoError,
 		},
 		{
 			name: "CheckOKWithTwoImage",
@@ -169,6 +174,26 @@ func TestLoadImages(t *testing.T) {
 				&types.Image{ImageName: types.ImageName{Name: "foo", Tag: "0.3"}, Path: "/app/foo", RelativeDir: "foo", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "dev"}}},
 				&types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}},
 			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "SuccessWithChild",
+			args: args{ctx: context.TestContext(nil)},
+			preRun: func(ctx *context.Context) {
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: test\ntag: 0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/Dockerfile", []byte("FROM debian:latest"), 0644)
+				afero.WriteFile(ctx.FS, "/app/foo/mib.yml", []byte("name: foo\ntag: 0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/foo/Dockerfile", []byte("FROM test:0.1"), 0644)
+			},
+			want: func() types.Images {
+				parent := &types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}}
+				child := &types.Image{ImageName: types.ImageName{Name: "foo", Tag: "0.1"}, HasLocalParent: true, HasParentToBuild: true, Path: "/app/foo", RelativeDir: "foo", Parent: parent}
+				parent.Children = types.Images{child}
+				return types.Images{
+					parent,
+				}
+			}(),
+			wantErr: assert.NoError,
 		},
 		{
 			name: "CheckOkWithOneImageFail",
@@ -181,12 +206,45 @@ func TestLoadImages(t *testing.T) {
 			want: types.Images{
 				&types.Image{ImageName: types.ImageName{Name: "foo", Tag: "0.3"}, Path: "/app/foo", RelativeDir: "foo", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "dev"}}},
 			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "FailValidator",
+			args: args{ctx: context.TestContext(nil)},
+			preRun: func(ctx *context.Context) {
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: test\ntag: 0.1\nalias: [{name: ''}]"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/Dockerfile", []byte("FROM debian:latest"), 0644)
+			},
+			want: types.Images{
+				&types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}, Alias: []types.ImageName{{}}},
+			},
+			wantErr: assert.Error,
+		},
+		{
+			name: "FailChildValidator",
+			args: args{ctx: context.TestContext(nil)},
+			preRun: func(ctx *context.Context) {
+				afero.WriteFile(ctx.FS, "/app/test/mib.yml", []byte("name: test\ntag: 0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/test/Dockerfile", []byte("FROM debian:latest"), 0644)
+				afero.WriteFile(ctx.FS, "/app/foo/mib.yml", []byte("name: foo\ntag: 0.1\nalias: [{name: ''}]"), 0644)
+				afero.WriteFile(ctx.FS, "/app/foo/Dockerfile", []byte("FROM test:0.1"), 0644)
+			},
+			want: func() types.Images {
+				parent := &types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}}
+				child := &types.Image{ImageName: types.ImageName{Name: "foo", Tag: "0.1"}, Alias: []types.ImageName{{}}, HasLocalParent: true, HasParentToBuild: true, Path: "/app/foo", RelativeDir: "foo", Parent: parent}
+				parent.Children = types.Images{child}
+				return types.Images{
+					parent,
+				}
+			}(),
+			wantErr: assert.Error,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.preRun(tt.args.ctx)
-			got := LoadImages(tt.args.ctx)
+			got, err := LoadImages(tt.args.ctx)
+			tt.wantErr(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LoadImages() got = %v, want %v", got, tt.want)
 			}
@@ -201,6 +259,9 @@ func Test_orderDependencyImages(t *testing.T) {
 
 	imageChild := &types.Image{ImageName: types.ImageName{Name: "bar", Tag: "1.0"}, Parent: &types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}}}
 	imageChildChild := &types.Image{ImageName: types.ImageName{Name: "bar2", Tag: "1.1"}, Parent: &types.Image{ImageName: types.ImageName{Name: "bar", Tag: "1.0"}}}
+
+	imagePlatform := &types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Platforms: []string{"foo", "bar"}, Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}}
+	imageChildPlatform := &types.Image{ImageName: types.ImageName{Name: "bar", Tag: "1.0"}, Parent: &types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}}}
 	tests := []struct {
 		name         string
 		imagesToSort types.Images
@@ -256,6 +317,16 @@ func Test_orderDependencyImages(t *testing.T) {
 			want: types.Images{
 				image1,
 				image2,
+			},
+		},
+		{
+			name: "CheckOkWithPlatform",
+			imagesToSort: types.Images{
+				imagePlatform,
+				imageChildPlatform,
+			},
+			want: types.Images{
+				imagePlatform,
 			},
 		},
 	}
