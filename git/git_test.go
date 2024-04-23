@@ -8,6 +8,7 @@ import (
 	mockgit "github.com/alexandreh2ag/mib/mock/git"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/cache"
 	"github.com/go-git/go-git/v5/storage/filesystem"
@@ -613,6 +614,12 @@ func initGitRepo(t *testing.T, ctx *context.Context) *git.Repository {
 	}
 	repoConfig, _ := repo.Config()
 	err = repo.Storer.SetConfig(repoConfig)
+	assert.NoError(t, err)
+	cfg, err := repo.ConfigScoped(config.LocalScope)
+	assert.NoError(t, err)
+	cfg.Author.Name = "Dev"
+	cfg.Author.Email = "dev@mib.local"
+	err = repo.SetConfig(cfg)
 	assert.NoError(t, err)
 	return repo
 }
