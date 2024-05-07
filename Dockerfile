@@ -1,5 +1,5 @@
 FROM docker:git
 
-COPY mib /usr/local/mib
+COPY mib /usr/local/bin/mib
 
-ENTRYPOINT ["/usr/local/mib"]
+ENTRYPOINT ["/usr/local/bin/mib"]
