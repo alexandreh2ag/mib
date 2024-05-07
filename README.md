@@ -173,8 +173,8 @@ Commands:
 
 ## Requirements
 
-* Docker (18.06+)
-* Git (2.17+)
+* Docker (26.0+)
+* Git (2.25+)
 
 ### Packages 
 
@@ -184,16 +184,10 @@ sudo apt install -y qemu-user-static binfmt-support
 
 ## Development
 
-* Install go-bindata:
+* Generate mock:
 
   ```bash
-  go get -u github.com/go-bindata/go-bindata/...
-  ```
-
-* Generate assets:
-
-  ```bash
-  go generate
+  ./bin/mock.sh
   ```
 
 * Build the project:
@@ -214,14 +208,6 @@ sudo apt install -y qemu-user-static binfmt-support
 
   ```bash
   docker run -it -v /var/run/docker.sock:/var/run/docker.sock -v ${PWD}:/build alexandreh2ag/mib:${VERSION} mib --help
-  ```
-
-* Install mib with deb (may require sudo privileges):
-
-  ```bash
-  curl -L "https://github.com/alexandreh2ag/mib/releases/download/${VERSION}/mib_$(uname -m).deb" -o mib_$(uname -m).deb
-  dpkg -i mib_$(uname -m).deb
-  rm mib_$(uname -m).deb
   ```
 
 * Install binary to custom location:
