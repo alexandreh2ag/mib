@@ -132,43 +132,28 @@ template:
 ## Usage
 
 ```help
-mib --help
-usage: mib [<flags>] <command> [<args> ...]
+Usage:
+  mib [command]
 
-A command-line mib helper.
+Available Commands:
+  build       build sub commands
+    commit      Build image for specific commit
+    dirty       Build image with change not committed
+  commit      Commit all changes
+  completion  Generate the autocompletion script for the specified shell
+  generate    generate sub commands
+    all         Generate all images readme
+    dirty       Generate image readme with change not committed
+    index       Generate index readme
+  help        Help about any command
+  list        List all images of directory
+  version     Show version info
 
 Flags:
-      --help           Show context-sensitive help (also try --help-long and --help-man).
-  -c, --config=CONFIG  Define specific configuration file
-  -p, --path="."       Define execution path
-
-Commands:
-  help [<command>...]
-    Show help.
-
-  build dirty
-    Build docker images for dirty repo
-
-  build commit <commit>
-    Build docker images for specific commit
-
-  list
-    List all images of directory
-
-  generate dirty
-    Generate readme of images for dirty repo
-
-  generate commit <commit>
-    Generate readme of images for specific commit
-
-  generate all
-    Generate readme of images for all
-
-  generate index
-    Generate a readme index
-
-  version
-    Display version
+  -c, --config string   Define config path
+  -w, --dir string      Define working dir (default "/home/alexandre/projects/labs/mib")
+  -h, --help            help for mib
+  -l, --level string    Define log level (default "INFO")
 ```
 
 ## Requirements
