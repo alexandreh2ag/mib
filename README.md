@@ -167,6 +167,10 @@ Flags:
 sudo apt install -y qemu-user-static binfmt-support
 ```
 
+### Docker multiple platform
+
+For build an image for a different platform or multiples platform you must enable feature [containerd-snapshotter](https://docs.docker.com/storage/containerd/).
+
 ## Development
 
 * Generate mock:

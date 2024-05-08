@@ -20,6 +20,13 @@
 - No children available
 {{- end}}
 
+## Platforms
+{{- range $index, $platform := .Platforms }}
+- {{ $platform }}
+{{- else}}
+- No platform defined
+{{- end}}
+
 ## Env Var
 {{- if .GetAllEnvVar }}
 | Var Name | Value |
