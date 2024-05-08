@@ -5,6 +5,7 @@ import (
 	"github.com/alexandreh2ag/mib/context"
 	"github.com/alexandreh2ag/mib/git"
 	"github.com/alexandreh2ag/mib/loader"
+	"github.com/alexandreh2ag/mib/printer"
 
 	"github.com/spf13/cobra"
 )
@@ -32,6 +33,9 @@ func GetDirtyRunFn(ctx *context.Context) func(*cobra.Command, []string) error {
 		}
 		filesChanged := git.GetStageFilesChanged(gitManager)
 		images.FlagChanged(loader.RemoveExtExcludePath(ctx.WorkingDir, ctx.Config.Build.ExtensionExclude, filesChanged))
+		if len(images) > 0 {
+			cmd.Println(printer.DisplayImagesTree(images))
+		}
 		errBuild := builder.BuildImages(images, pushImages)
 		if errBuild != nil {
 			return errBuild

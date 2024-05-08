@@ -51,6 +51,24 @@ func TestGit_Status(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestGit_Head_Success(t *testing.T) {
+
+	ctx := context.TestContext(nil)
+	ctx.WorkingDir = "/app/repo"
+
+	repo := initGitRepo(t, ctx)
+	_ = afero.WriteFile(ctx.FS, filepath.Join(ctx.WorkingDir, "foo/mib.yml"), []byte("name: foo\ntag: 0.1"), 0644)
+	_ = afero.WriteFile(ctx.FS, filepath.Join(ctx.WorkingDir, "foo/Dockerfile"), []byte("FROM debian:latest"), 0644)
+	_ = stageAllAndCommit(t, repo, ctx.WorkingDir, "Add image")
+
+	worktree, err := repo.Worktree()
+	assert.NoError(t, err)
+	gitManger := &Git{r: repo, w: worktree}
+	got, err := gitManger.Head()
+	assert.NoError(t, err)
+	assert.NotEqual(t, "", got)
+}
+
 func TestGit_ResolveRevision(t *testing.T) {
 
 	hash := plumbing.NewHash("hash")

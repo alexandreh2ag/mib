@@ -28,6 +28,7 @@ type Repository interface {
 	ResolveRevision(in plumbing.Revision) (*plumbing.Hash, error)
 	CommitObject(h plumbing.Hash) (*object.Commit, error)
 	CommitObjects() (object.CommitIter, error)
+	Head() (*plumbing.Reference, error)
 }
 
 type Worktree interface {
@@ -37,6 +38,7 @@ type Worktree interface {
 }
 
 type Manager interface {
+	Head() (string, error)
 	Status() (git.Status, error)
 	ResolveRevision(in plumbing.Revision) (*plumbing.Hash, error)
 	CommitFileContent(hash *plumbing.Hash, path string) (string, error)
@@ -50,6 +52,14 @@ var _ Manager = &Git{}
 type Git struct {
 	r Repository
 	w Worktree
+}
+
+func (g Git) Head() (string, error) {
+	head, err := g.r.Head()
+	if err != nil {
+		return "", err
+	}
+	return head.String(), nil
 }
 
 func (g Git) CreateCommit(msg string, opts *git.CommitOptions) (plumbing.Hash, error) {

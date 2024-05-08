@@ -50,6 +50,34 @@ func TestGetCommitRunFn(t *testing.T) {
 			},
 		},
 		{
+			name:      "SuccessWithoutCommitFlag",
+			imageData: "name: foo\ntag: 0.1",
+			preFn: func(ctx *context.Context, ctrl *gomock.Controller) {
+				m := mockgit.NewMockManager(ctrl)
+
+				mibGit.CreateGit = func(ctx *context.Context) (mibGit.Manager, error) {
+					return m, nil
+				}
+				gomock.InOrder(
+					m.EXPECT().Head().Times(1).Return("xxx", nil),
+					m.EXPECT().GetCommitFilesChanged(gomock.Eq("xxx")).Times(1).Return(
+						[]string{"foo/Dockerfile"},
+						nil,
+					),
+				)
+
+				builderDocker := mock_types_container.NewMockBuilderImage(ctrl)
+				builderDocker.EXPECT().BuildImages(gomock.Any(), gomock.Eq(true)).Times(1).Return(nil)
+				ctx.Builders[docker.KeyBuilder] = builderDocker
+			},
+			cmdArgs: []string{
+				"--" + PushImages,
+			},
+			checkFn: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+		{
 			name:      "ErrorCreateGitManger",
 			imageData: "name: foo\ntag: 0.1",
 			preFn: func(ctx *context.Context, ctrl *gomock.Controller) {
@@ -61,6 +89,24 @@ func TestGetCommitRunFn(t *testing.T) {
 				ctx.Builders[docker.KeyBuilder] = builderDocker
 			},
 			cmdArgs: []string{"--" + Commit, "xxx"},
+			checkFn: func(t *testing.T, err error) {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "error")
+			},
+		},
+		{
+			name:      "ErrorGetHeadReference",
+			imageData: "name: foo\ntag: 0.1",
+			preFn: func(ctx *context.Context, ctrl *gomock.Controller) {
+				m := mockgit.NewMockManager(ctrl)
+				mibGit.CreateGit = func(ctx *context.Context) (mibGit.Manager, error) {
+					return m, nil
+				}
+				m.EXPECT().Head().Times(1).Return("", errors.New("error"))
+				builderDocker := mock_types_container.NewMockBuilderImage(ctrl)
+				ctx.Builders[docker.KeyBuilder] = builderDocker
+			},
+			cmdArgs: []string{},
 			checkFn: func(t *testing.T, err error) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "error")
