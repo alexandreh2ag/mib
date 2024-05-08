@@ -9,3 +9,4 @@ mockgen -destination=mock/git/git_manager.go -package=mock_git github.com/alexan
 mockgen -destination=mock/types/container/image.go -package=mock_types_container github.com/alexandreh2ag/mib/types/container BuilderImage
 mockgen -destination=mock/docker/client.go -package=mock_docker github.com/docker/docker/client APIClient
 mockgen -destination=mock/exec/command.go -package=mock_exec github.com/alexandreh2ag/mib/exec Executable
+mockgen -destination=mock/validator/error.go -package=mock_validator github.com/go-playground/validator/v10 FieldError

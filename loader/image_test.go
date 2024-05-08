@@ -2,9 +2,12 @@ package loader
 
 import (
 	"github.com/alexandreh2ag/mib/context"
+	mock_validator "github.com/alexandreh2ag/mib/mock/validator"
 	"github.com/alexandreh2ag/mib/types"
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 	"reflect"
 	"testing"
 )
@@ -228,11 +231,15 @@ func TestLoadImages(t *testing.T) {
 				afero.WriteFile(ctx.FS, "/app/test/Dockerfile", []byte("FROM debian:latest"), 0644)
 				afero.WriteFile(ctx.FS, "/app/foo/mib.yml", []byte("name: foo\ntag: 0.1\nalias: [{name: ''}]"), 0644)
 				afero.WriteFile(ctx.FS, "/app/foo/Dockerfile", []byte("FROM test:0.1"), 0644)
+				afero.WriteFile(ctx.FS, "/app/foo2/mib.yml", []byte("name: foo2\ntag: 0.1\nalias: [{name: ''}]"), 0644)
+				afero.WriteFile(ctx.FS, "/app/foo2/Dockerfile", []byte("FROM foo:0.1"), 0644)
 			},
 			want: func() types.Images {
 				parent := &types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}}
 				child := &types.Image{ImageName: types.ImageName{Name: "foo", Tag: "0.1"}, Alias: []types.ImageName{{}}, HasLocalParent: true, HasParentToBuild: true, Path: "/app/foo", RelativeDir: "foo", Parent: parent}
+				childChild := &types.Image{ImageName: types.ImageName{Name: "foo2", Tag: "0.1"}, Alias: []types.ImageName{{}}, HasLocalParent: true, HasParentToBuild: true, Path: "/app/foo2", RelativeDir: "foo2", Parent: child}
 				parent.Children = types.Images{child}
+				child.Children = types.Images{childChild}
 				return types.Images{
 					parent,
 				}
@@ -383,6 +390,72 @@ func TestRemoveExtExcludePath(t *testing.T) {
 			if got := RemoveExtExcludePath(tt.args.workingDir, tt.args.extensionExclude, tt.args.filesUpdated); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("RemoveExtExcludePath() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_reformatValidatorError(t *testing.T) {
+
+	tests := []struct {
+		name       string
+		imagesFunc func() types.Images
+		errFunc    func(*gomock.Controller) validator.FieldError
+		want       string
+	}{
+		{
+			name: "SuccessReplaceIndex",
+			imagesFunc: func() types.Images {
+				return types.Images{&types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}}}
+			},
+			errFunc: func(ctrl *gomock.Controller) validator.FieldError {
+				errMock := mock_validator.NewMockFieldError(ctrl)
+				errMock.EXPECT().Namespace().Times(1).Return("[0].Alias[0].Name")
+				errMock.EXPECT().Error().Times(1).Return("Key: '[0].Alias[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
+				return errMock
+			},
+			want: "Key: '/app/test Alias[0].Name' Error:Field validation for 'Name' failed on the 'required' tag",
+		},
+		{
+			name: "SuccessReplaceIndexChild",
+			imagesFunc: func() types.Images {
+				parent := &types.Image{ImageName: types.ImageName{Name: "test", Tag: "0.1"}, Path: "/app/test", RelativeDir: "test", Parent: &types.Image{ImageName: types.ImageName{Name: "debian", Tag: "latest"}}}
+				child := &types.Image{ImageName: types.ImageName{Name: "foo", Tag: "0.1"}, Alias: []types.ImageName{{}}, HasLocalParent: true, HasParentToBuild: true, Path: "/app/foo", RelativeDir: "foo", Parent: parent}
+				childChild := &types.Image{ImageName: types.ImageName{Name: "foo2", Tag: "0.1"}, Alias: []types.ImageName{{}}, HasLocalParent: true, HasParentToBuild: true, Path: "/app/foo2", RelativeDir: "foo2", Parent: child}
+				parent.Children = types.Images{child}
+				child.Children = types.Images{childChild}
+				return types.Images{
+					parent,
+				}
+			},
+			errFunc: func(ctrl *gomock.Controller) validator.FieldError {
+				errMock := mock_validator.NewMockFieldError(ctrl)
+				errMock.EXPECT().Namespace().Times(1).Return("[0].Children[0].Children[0].Alias[0].Name")
+				errMock.EXPECT().Error().Times(1).Return("Key: '[0].Children[0].Children[0].Alias[0].Name' Error:Field validation for 'Name' failed on the 'required' tag")
+				return errMock
+			},
+			want: "Key: '/app/foo2 Alias[0].Name' Error:Field validation for 'Name' failed on the 'required' tag",
+		},
+		{
+			name: "SuccessDefaultError",
+			imagesFunc: func() types.Images {
+				return types.Images{}
+			},
+			errFunc: func(ctrl *gomock.Controller) validator.FieldError {
+				errMock := mock_validator.NewMockFieldError(ctrl)
+				errMock.EXPECT().Namespace().Times(1).Return("not matching")
+				errMock.EXPECT().Error().Times(1).Return("Key: Error:Field validation for 'Name' failed on the 'required' tag")
+				return errMock
+			},
+			want: "Key: Error:Field validation for 'Name' failed on the 'required' tag",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			err := tt.errFunc(ctrl)
+			got := reformatValidatorError(tt.imagesFunc(), err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -51,7 +52,7 @@ func LoadImages(ctx *context.Context) (types.Images, error) {
 		switch {
 		case errors.As(err, &validationErrors):
 			for _, validationError := range validationErrors {
-				ctx.Logger.Error(fmt.Sprintf("%v", validationError))
+				ctx.Logger.Error(fmt.Sprintf("%v", reformatValidatorError(imagesOrdered, validationError)))
 			}
 			return imagesOrdered, errors.New("images configuration file is not valid")
 		default:
@@ -147,4 +148,27 @@ func RemoveExtExcludePath(workingDir string, extensionExclude string, filesUpdat
 		}
 	}
 	return pathsChanged
+}
+
+func reformatValidatorError(images types.Images, err validator.FieldError) string {
+	errNamespace := err.Namespace()
+	regex := regexp.MustCompile(`^\[(?P<index>\d)]\.`)
+	regexChildren := regexp.MustCompile(`(Children\[(\d)*])\.`)
+	match := regex.FindStringSubmatch(errNamespace)
+	if len(match) >= 2 {
+		replaceStr := match[0]
+		indexImage, _ := strconv.Atoi(match[1])
+		currentImage := images[indexImage]
+		imagePath := currentImage.Path
+		matchChildren := regexChildren.FindAllStringSubmatch(errNamespace, -1)
+		for _, matchChild := range matchChildren {
+			replaceStr += matchChild[0]
+			indexImage, _ = strconv.Atoi(match[1])
+			currentImage = currentImage.Children[indexImage]
+			imagePath = currentImage.Path
+		}
+
+		return strings.Replace(err.Error(), replaceStr, imagePath+" ", 1)
+	}
+	return err.Error()
 }
