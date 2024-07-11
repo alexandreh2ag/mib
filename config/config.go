@@ -11,6 +11,13 @@ func (g *Config) Get() *Config {
 
 type Build struct {
 	ExtensionExclude string `mapstructure:"extensionExclude" validate:"required"`
+	Docker           Docker `mapstructure:"docker"`
+}
+
+type Docker struct {
+	CacheToEnable   bool              `mapstructure:"cacheToEnable"`
+	CacheFromEnable bool              `mapstructure:"cacheFromEnable"`
+	BuildExtraOpts  map[string]string `mapstructure:"buildExtraOpts"`
 }
 
 type Template struct {

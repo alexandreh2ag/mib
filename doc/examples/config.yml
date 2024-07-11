@@ -1,5 +1,10 @@
 build:
     extensionExclude: ".md,.txt"
+    docker:
+        cacheToEnable: true
+        cacheFromEnable: true
+        buildExtraOpts:
+            provenance: "true"
 template:
     imagePath: "my-custom-image.tmpl"
     indexPath: "my-custom-index.tmpl"
