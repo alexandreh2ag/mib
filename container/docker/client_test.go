@@ -194,7 +194,34 @@ func TestBuilderDocker_Build_Success(t *testing.T) {
 	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
 	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
 	cmd.EXPECT().Run().Times(1).Return(nil)
-	defaultsArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+	defaultsArgs := []string{"build", "--progress", "plain"}
+	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--tag", "registry2.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "."}
+	wantArgs := append(defaultsArgs, testArgs...)
+	exec.NewCmd = func(name string, arg ...string) exec.Executable {
+		assert.Equal(t, "docker", name)
+		assert.Equal(t, wantArgs, arg)
+		return cmd
+	}
+	b := BuilderDocker{ctx: ctx, AuthConfig: &auth}
+	err := b.Build(image, false)
+	assert.NoError(t, err)
+}
+
+func TestBuilderDocker_Build_SuccessWithBuildOpt(t *testing.T) {
+	ctx := context.TestContext(nil)
+	ctx.Config.Build.Docker.CacheToEnable = true
+	ctx.Config.Build.Docker.CacheFromEnable = true
+	ctx.Config.Build.Docker.BuildExtraOpts = map[string]string{"provenance": "true"}
+	auth := AuthConfig{AuthConfigs: map[string]registry.AuthConfig{}}
+	image := &types.Image{ImageName: types.ImageName{Name: "registry.example.com/foo", Tag: "0.1"}, Path: "/app", Alias: []types.ImageName{{Name: "registry2.example.com/foo", Tag: "0.1"}}}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	cmd := mock_exec.NewMockExecutable(ctrl)
+	cmd.EXPECT().SetDir(gomock.Eq("/app")).Times(1)
+	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
+	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
+	cmd.EXPECT().Run().Times(1).Return(nil)
+	defaultsArgs := []string{"build", "--progress", "plain", "--cache-to", "type=inline,mode=max", "--cache-from", "registry.example.com/foo:0.1", "--provenance", "true"}
 	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--tag", "registry2.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "."}
 	wantArgs := append(defaultsArgs, testArgs...)
 	exec.NewCmd = func(name string, arg ...string) exec.Executable {
@@ -218,7 +245,7 @@ func TestBuilderDocker_Build_SuccessWithPush(t *testing.T) {
 	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
 	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
 	cmd.EXPECT().Run().Times(1).Return(nil)
-	defaultsArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+	defaultsArgs := []string{"build", "--progress", "plain"}
 	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--tag", "registry2.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "--push", "."}
 	wantArgs := append(defaultsArgs, testArgs...)
 	exec.NewCmd = func(name string, arg ...string) exec.Executable {
@@ -242,7 +269,7 @@ func TestBuilderDocker_Build_SuccessMultiPlatforms(t *testing.T) {
 	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
 	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
 	cmd.EXPECT().Run().Times(1).Return(nil)
-	defaultsArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+	defaultsArgs := []string{"build", "--progress", "plain"}
 	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "--platform", "linux/amd64,linux/arm64/v8", "."}
 	wantArgs := append(defaultsArgs, testArgs...)
 	exec.NewCmd = func(name string, arg ...string) exec.Executable {
@@ -266,7 +293,7 @@ func TestBuilderDocker_Build_Error(t *testing.T) {
 	cmd.EXPECT().SetStdout(gomock.Any()).Times(1)
 	cmd.EXPECT().SetStderr(gomock.Any()).Times(1)
 	cmd.EXPECT().Run().Times(1).Return(errors.New("fail build"))
-	defaultsArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+	defaultsArgs := []string{"build", "--progress", "plain"}
 	testArgs := []string{"--tag", "registry.example.com/foo:0.1", "--label", "mib.version=develop-SNAPSHOT", "."}
 	wantArgs := append(defaultsArgs, testArgs...)
 	exec.NewCmd = func(name string, arg ...string) exec.Executable {

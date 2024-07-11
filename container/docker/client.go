@@ -74,10 +74,25 @@ func (b BuilderDocker) BuildImages(images types.Images, pushImages bool) error {
 }
 
 func (b BuilderDocker) Build(image *types.Image, pushImages bool) error {
+	dockerCfg := b.ctx.Config.Build.Docker
 	b.ctx.Logger.Info(fmt.Sprintf("Start building %s", image.GetFullName()))
 	logger := b.ctx.Logger.With("image", image.Name)
-	//cmdArgs := []string{"buildx", "build", "--progress", "plain", "--provenance", "false"}
-	cmdArgs := []string{"build", "--no-cache", "--progress", "plain", "--provenance", "false"}
+
+	cmdArgs := []string{"build", "--progress", "plain"}
+
+	if dockerCfg.CacheToEnable {
+		cmdArgs = append(cmdArgs, "--cache-to", "type=inline,mode=max")
+	}
+
+	if dockerCfg.CacheFromEnable {
+		cmdArgs = append(cmdArgs, "--cache-from", image.GetFullName())
+	}
+
+	if len(dockerCfg.BuildExtraOpts) > 0 {
+		for optKey, optValue := range dockerCfg.BuildExtraOpts {
+			cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", optKey), optValue)
+		}
+	}
 
 	labels := []string{
 		fmt.Sprintf("%s=%s", "mib.version", version.GetFormattedVersion()),
